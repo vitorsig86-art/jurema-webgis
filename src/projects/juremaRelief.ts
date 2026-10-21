@@ -18,6 +18,19 @@ function vector(id: string, name: string, filename: string, style: GeoStyle, fie
 }
 
 export const juremaReliefLayers: ProjectLayerConfig[] = [
+  {
+    id: "demMacro", name: "Modelo de Elevação — ANADEM",
+    description: "Modelo de Elevação — ANADEM, imagem raster regional",
+    kind: "raster", group: "macro", subsection: "Relevo e Hidrologia",
+    defaultVisible: false, opacityControl: true, legendMode: "embedded",
+    source: {
+      format: "tms",
+      url: "https://pub-17e2ce7d5c144788a0b734186a1a0360.r2.dev/dem/{z}/{x}/{reverseY}.png",
+      credit: "ANADEM",
+      minimumLevel: 5, maximumLevel: 14, tileWidth: 256, tileHeight: 256,
+      bounds: [-56.25, -31.95216223802434, -33.75, -16.636191878397728],
+    },
+  },
   vector("curvas_10m", "Curvas de nível 10 m — ANADEM", "curvas_10m.geojson", {
     stroke: "#383838", strokeWidth: 0.65, clampToGround: true, zIndex: 9,
   }, [field("ELEVATION", "Cota")]), // ELEVATION already includes meters.
