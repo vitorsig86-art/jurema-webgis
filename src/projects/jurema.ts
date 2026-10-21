@@ -1,5 +1,7 @@
 import type { GeographicBounds, ProjectConfig, ProjectLayerConfig } from "./types";
 import { juremaDroneLayers } from "./juremaDrone";
+import { juremaContextLayers } from "./juremaContext";
+import { juremaReliefLayers } from "./juremaRelief";
 
 const publicUrl = "https://pub-17e2ce7d5c144788a0b734186a1a0360.r2.dev";
 export const orthoBounds: GeographicBounds = [-44.82421875, -22.10599880, -44.73632812, -22.02454560];
@@ -57,6 +59,8 @@ export const juremaProject: ProjectConfig = {
     raster("aspect", "Orientação Solar", "solar-orientation", thematicBounds, 11, 20),
     raster("ndvi", "NDVI", "ndvi", thematicBounds, 11, 20),
     ...juremaDroneLayers,
+    ...juremaContextLayers,
+    ...juremaReliefLayers,
   ],
   developmentTools: { modelAlignment: false, cropAuthoring: false },
 };
