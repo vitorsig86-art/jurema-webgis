@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Cesium3DTileset, GeoJsonDataSource, ImageryLayer, type Viewer } from "cesium";
+import { Cesium3DTileset, GeoJsonDataSource, ImageryLayer, SplitDirection, type Viewer } from "cesium";
 import { applyProjectCamera } from "../cesium/projectCamera";
 import { assertImageryLayerReady, attachLayer, createBasemapFallback, isBasemapFallback, loadLayer, removeLayer, setVectorOpacity, setVectorVisibility, type LoadedLayer } from "../cesium/loadLayer";
 import { createImageryTileErrorHandler } from "../cesium/imageryTileErrors";
 import { createModelTerrainCutout } from "../cesium/modelTerrainCutout";
-import type { LayerStatus, ProjectConfig } from "../projects/types";
+import type { LayerStatus, ProjectConfig, TemporalComparisonSelection } from "../projects/types";
 
-export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, visible: Set<string>) {
+export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, visible: Set<string>, comparison: TemporalComparisonSelection | null = null) {
   const loaded = useRef(new Map<string, LoadedLayer>());
   const opacityRef = useRef(new Map<string, number>());
   const [rasterOpacities, setRasterOpacities] = useState<Record<string, number>>({});
@@ -14,6 +14,17 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
   const loadVisibleTilesRef = useRef<(() => void) | null>(null);
   const terrainCutouts = useRef(new Map<string, ReturnType<typeof createModelTerrainCutout>>());
   visibleRef.current = visible;
+  const comparisonRef = useRef(comparison);
+  comparisonRef.current = comparison;
+
+  function applyTemporalSplit(id: string, layer: ImageryLayer) {
+    if (!project.layers.some(definition => definition.id === id && definition.temporalCampaign)) return;
+    const selection = comparisonRef.current;
+    // The same campaign on both sides uses its single existing layer unsplit.
+    layer.splitDirection = !selection || selection.left === selection.right ? SplitDirection.NONE
+      : id === selection.left ? SplitDirection.LEFT
+      : id === selection.right ? SplitDirection.RIGHT : SplitDirection.NONE;
+  }
   const [statuses, setStatuses] = useState<Record<string, LayerStatus>>({});
   const [mapWarning, setMapWarning] = useState<string | null>(null);
 
@@ -119,6 +130,7 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
             return;
           }
           resources.set(definition.id, layer);
+          if (layer instanceof ImageryLayer) applyTemporalSplit(definition.id, layer);
           if (isRaster && layer instanceof ImageryLayer) layer.alpha = opacityRef.current.get(definition.id) ?? 1;
           if (definition.opacityControl && layer instanceof GeoJsonDataSource) setVectorOpacity(layer, opacityRef.current.get(definition.id) ?? 1);
           if (layer instanceof ImageryLayer) {
@@ -182,14 +194,17 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
     for (const [id, layer] of loaded.current) {
-      if (layer instanceof ImageryLayer) assertImageryLayerReady(layer);
+      if (layer instanceof ImageryLayer) {
+        assertImageryLayerReady(layer);
+        applyTemporalSplit(id, layer);
+      }
       layer.show = visible.has(id);
       if (layer instanceof GeoJsonDataSource) setVectorVisibility(layer, layer.show);
       terrainCutouts.current.get(id)?.setVisible(layer.show);
     }
     loadVisibleTilesRef.current?.();
     viewer.scene.requestRender();
-  }, [viewer, visible]);
+  }, [viewer, visible, comparison]);
 
   function setRasterOpacity(id: string, percent: number): void {
     const definition = project.layers.find((layer) => layer.id === id);

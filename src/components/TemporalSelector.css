@@ -7,3 +7,4 @@
 .temporal-options button:focus-visible { outline: 2px solid #245c53; outline-offset: 2px; }
 .temporal-active { margin: 9px 0 0; color: #49685e; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
 .temporal-active span { display: block; margin-top: 3px; }
+.temporal-compare-button { width: 100%; min-height: 44px; margin-top: 9px; padding: 6px 10px; border: 1px solid #426539; border-radius: 6px; background: #fff; color: #315e55; font-size: 12px; font-weight: 600; }

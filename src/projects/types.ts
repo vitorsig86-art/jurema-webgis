@@ -72,7 +72,7 @@ export interface ProjectLayerConfig {
   defaultVisible: boolean;
   opacityControl?: boolean;
   exclusiveGroup?: string;
-  temporalCampaign?: { label: string; description: string };
+  temporalCampaign?: { label: string; description: string; comparisonLabel?: string };
   group?: "basemap" | "model" | "raster" | "vector" | "macro";
   subsection?: string;
   optional?: boolean;
@@ -113,6 +113,11 @@ export interface CameraConfig {
   roll: number;
 }
 
+export interface TemporalComparisonSelection {
+  left: string;
+  right: string;
+}
+
 export interface ProjectConfig {
   id: string;
   name: string;
@@ -120,6 +125,7 @@ export interface ProjectConfig {
   bounds: GeographicBounds;
   initialCamera?: CameraConfig;
   layers: ProjectLayerConfig[];
+  temporalComparison?: TemporalComparisonSelection;
   developmentTools?: { modelAlignment?: boolean; cropAuthoring?: boolean; cameraCapture?: boolean };
 }
 

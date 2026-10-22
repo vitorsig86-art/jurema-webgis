@@ -17,19 +17,20 @@ function raster(id: string, name: string, kind: ProjectLayerConfig["kind"], boun
 }
 
 const orthomosaicCampaigns: ProjectLayerConfig[] = [
-  { id: "ortho2022", directory: "2022", label: "2022", description: "Levantamento histórico" },
-  { id: "ortho2024", directory: "2024", label: "2024", description: "Antes do incêndio" },
-  { id: "ortho2024PostFire", directory: "2024_pos_fogo", label: "2024 pós-fogo", description: "Após o incêndio" },
-  { id: "ortho2025", directory: "2025", label: "2025", description: "Registro posterior ao incêndio" },
-  { id: "orto", directory: "orto", label: "2026", description: "Levantamento atual" },
-].map(({ id, directory, label, description }) => ({
+  { id: "ortho2022", directory: "2022", label: "2022", description: "Levantamento histórico", comparisonLabel: "2022 — Histórico" },
+  { id: "ortho2024", directory: "2024", label: "2024", description: "Antes do incêndio", comparisonLabel: "2024 — Pré-fogo" },
+  { id: "ortho2024PostFire", directory: "2024_pos_fogo", label: "2024 pós-fogo", description: "Após o incêndio", comparisonLabel: "2024 — Pós-fogo" },
+  { id: "ortho2025", directory: "2025", label: "2025", description: "Registro posterior ao incêndio", comparisonLabel: "2025 — Posterior" },
+  { id: "orto", directory: "orto", label: "2026", description: "Levantamento atual", comparisonLabel: "2026 — Atual" },
+].map(({ id, directory, label, description, comparisonLabel }) => ({
   ...raster(id, "Ortomosaico " + label, "orthomosaic", orthoBounds, 12, 21, directory),
   description: label + " — " + description,
   exclusiveGroup: "temporal-orthomosaics",
-  temporalCampaign: { label, description },
+  temporalCampaign: { label, description, comparisonLabel },
 }));
 
 export const juremaProject: ProjectConfig = {
+  temporalComparison: { left: "ortho2024", right: "ortho2024PostFire" },
   id: "jurema", name: "Jurema", location: "Baependi/MG", bounds: orthoBounds,
   // Approved Cesium capture: degrees and meters; shared by opening and Home.
   initialCamera: {

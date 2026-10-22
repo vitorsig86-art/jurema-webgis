@@ -11,6 +11,9 @@ interface Props {
   onOpacityChange: (id: string, percent: number) => void;
   onToggle: (id: string) => void;
   onClose: () => void;
+  comparing?: boolean;
+  onCompare?: () => void;
+  onExitComparison?: () => void;
   // Quick scenes are optional so the panel keeps rendering without them.
   scenes?: { id: string; label: string; description?: string; layerIds: string[] }[];
   onApplyScene?: (scene: { id: string; label: string; description?: string; layerIds: string[] }) => void;
@@ -37,7 +40,7 @@ function sameLayerSet(current: Set<string>, expected: string[]) {
   return current.size === expected.length && expected.every((id) => current.has(id));
 }
 
-export function LayerPanel({ project, statuses, visible, rasterOpacities, onOpacityChange, onToggle, onClose, scenes, onApplyScene }: Props) {
+export function LayerPanel({ project, statuses, visible, rasterOpacities, onOpacityChange, onToggle, onClose, scenes, onApplyScene, comparing, onCompare, onExitComparison }: Props) {
   const [modelHint, setModelHint] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   // Sections without an active layer start collapsed. Later layer toggles must
@@ -125,7 +128,7 @@ export function LayerPanel({ project, statuses, visible, rasterOpacities, onOpac
               </button>
             </h3>
             <div className="layer-list" id={`workspace-list-${section.id}`} hidden={!open}>
-              {section.layers.some(layer => layer.temporalCampaign) && <TemporalSelector layers={section.layers} visible={visible} statuses={statuses} onToggle={onToggle} />}
+              {section.layers.some(layer => layer.temporalCampaign) && <TemporalSelector layers={section.layers} visible={visible} statuses={statuses} onToggle={onToggle} comparing={comparing} onCompare={onCompare} onExitComparison={onExitComparison} />}
               {layers.length === 0 && <p className="workspace-section-empty">Sem camadas nesta fase.</p>}
               {layers.map((layer, index) => {
                 const enabled = visible.has(layer.id);
@@ -137,7 +140,7 @@ export function LayerPanel({ project, statuses, visible, rasterOpacities, onOpac
                     {layer.subsection && layer.subsection !== layers[index - 1]?.subsection && <h4 className="layer-subsection">{layer.subsection}</h4>}
                     <div className={`layer-card ${enabled ? "is-active" : ""} ${isModel ? "model-layer-card" : ""}`}>
                       <label className="layer-toggle">
-                        <input type="checkbox" checked={enabled} onChange={() => {
+                        <input type="checkbox" checked={enabled} disabled={comparing && Boolean(layer.temporalCampaign)} onChange={() => {
                           if (isModel) setModelHint(enabled ? null : layer.id);
                           onToggle(layer.id);
                         }} />

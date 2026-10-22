@@ -1,14 +1,15 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { projects } from "./projects";
 import { LayerPanel } from "./components/LayerPanel";
 import { Legend } from "./components/Legend";
 import { NavigationControls } from "./components/NavigationControls";
 import { MeasurementToolbar } from "./components/MeasurementToolbar";
 import { VectorPopup } from "./components/VectorPopup";
+import { TemporalComparison } from "./components/TemporalComparison";
 
 import { useCesiumViewer } from "./hooks/useCesiumViewer";
 import { useProjectLayers } from "./hooks/useProjectLayers";
-import type { ProjectConfig } from "./projects/types";
+import type { ProjectConfig, TemporalComparisonSelection } from "./projects/types";
 
 const ModelDevelopmentTools = import.meta.env.DEV ? lazy(() => import("./components/ModelDevelopmentTools")) : null;
 
@@ -20,11 +21,22 @@ export function App() {
   const project = projects[0];
   const [visible, setVisible] = useState(() => defaultVisibility(projects[0]));
   const [panelOpen, setPanelOpen] = useState(false);
+  const [comparison, setComparison] = useState<TemporalComparisonSelection | null>(null);
+  // Keep simple-mode visibility untouched for the entire comparison session.
+  const displayVisible = useMemo(() => {
+    if (!comparison) return visible;
+    const next = new Set(visible);
+    for (const layer of project.layers) if (layer.temporalCampaign) next.delete(layer.id);
+    next.add(comparison.left);
+    next.add(comparison.right);
+    return next;
+  }, [visible, comparison, project]);
   const { containerRef, viewer, error } = useCesiumViewer();
-  const { statuses, mapWarning, rasterOpacities, setRasterOpacity, getModel } = useProjectLayers(viewer, project, visible);
+  const { statuses, mapWarning, rasterOpacities, setRasterOpacity, getModel } = useProjectLayers(viewer, project, displayVisible, comparison);
   const legendLayers = project.layers.filter((layer) => layer.legend && visible.has(layer.id));
 
   function toggleLayer(id: string) {
+    if (comparison && project.layers.some(layer => layer.id === id && layer.temporalCampaign)) return;
     setVisible((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -42,6 +54,9 @@ export function App() {
   return (
     <main className="app-shell">
       <div ref={containerRef} className="map-container" aria-label="Mapa 3D interativo do projeto" />
+      {comparison && viewer && <TemporalComparison viewer={viewer} layers={project.layers} selection={comparison}
+        visible={displayVisible} statuses={statuses} rasterOpacities={rasterOpacities} drawerOpen={panelOpen}
+        onChange={setComparison} onExit={() => setComparison(null)} />}
       <header className="app-header">
         <a className="brand" href="/" aria-label="Página inicial do Cardeal Map">
           <img src="/logo-cardeal.png" alt="" />
@@ -53,7 +68,11 @@ export function App() {
       </header>
       {panelOpen && <button type="button" className="drawer-backdrop" aria-label="Fechar painel de camadas" onClick={() => setPanelOpen(false)} />}
       <aside id="layer-panel" aria-label="Área de trabalho e camadas" className={`layer-panel ${panelOpen ? "is-open" : ""}`}>
-        <LayerPanel project={project} statuses={statuses} visible={visible} rasterOpacities={rasterOpacities} onOpacityChange={setRasterOpacity} onToggle={toggleLayer} onClose={() => setPanelOpen(false)} />
+        <LayerPanel project={project} statuses={statuses} visible={displayVisible} rasterOpacities={rasterOpacities} onOpacityChange={setRasterOpacity} onToggle={toggleLayer} onClose={() => setPanelOpen(false)}
+          comparing={Boolean(comparison)} onCompare={project.temporalComparison && viewer && !error ? () => {
+            setComparison(project.temporalComparison ?? null);
+            setPanelOpen(false);
+          } : undefined} onExitComparison={() => setComparison(null)} />
       </aside>
       <NavigationControls viewer={viewer} project={project} disabled={Boolean(error)} />
       <MeasurementToolbar viewer={viewer} disabled={Boolean(error)} />
