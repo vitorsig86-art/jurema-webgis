@@ -7,14 +7,27 @@ const publicUrl = "https://pub-17e2ce7d5c144788a0b734186a1a0360.r2.dev";
 export const orthoBounds: GeographicBounds = [-44.82421875, -22.10599880, -44.73632812, -22.02454560];
 export const thematicBounds: GeographicBounds = [-44.82421875, -22.10599880, -44.64843750, -21.94304553];
 
-function raster(id: string, name: string, kind: ProjectLayerConfig["kind"], bounds: GeographicBounds, minimumLevel: number, maximumLevel: number): ProjectLayerConfig {
+function raster(id: string, name: string, kind: ProjectLayerConfig["kind"], bounds: GeographicBounds, minimumLevel: number, maximumLevel: number, directory = id): ProjectLayerConfig {
   return {
     id, name, kind, description: name + " — Jurema, Baependi/MG", group: "raster",
     defaultVisible: id === "orto",
-    source: { format: "tms", url: publicUrl + "/" + id + "/{z}/{x}/{reverseY}.png",
+    source: { format: "tms", url: publicUrl + "/" + directory + "/{z}/{x}/{reverseY}.png",
       credit: "Cardeal Map — Jurema", bounds, minimumLevel, maximumLevel, tileWidth: 256, tileHeight: 256 },
   };
 }
+
+const orthomosaicCampaigns: ProjectLayerConfig[] = [
+  { id: "ortho2022", directory: "2022", label: "2022", description: "Levantamento histórico" },
+  { id: "ortho2024", directory: "2024", label: "2024", description: "Antes do incêndio" },
+  { id: "ortho2024PostFire", directory: "2024_pos_fogo", label: "2024 pós-fogo", description: "Após o incêndio" },
+  { id: "ortho2025", directory: "2025", label: "2025", description: "Registro posterior ao incêndio" },
+  { id: "orto", directory: "orto", label: "2026", description: "Levantamento atual" },
+].map(({ id, directory, label, description }) => ({
+  ...raster(id, "Ortomosaico " + label, "orthomosaic", orthoBounds, 12, 21, directory),
+  description: label + " — " + description,
+  exclusiveGroup: "temporal-orthomosaics",
+  temporalCampaign: { label, description },
+}));
 
 export const juremaProject: ProjectConfig = {
   id: "jurema", name: "Jurema", location: "Baependi/MG", bounds: orthoBounds,
@@ -52,7 +65,7 @@ export const juremaProject: ProjectConfig = {
           ],
         },
       } },
-    raster("orto", "Ortomosaico", "orthomosaic", orthoBounds, 12, 21),
+    ...orthomosaicCampaigns,
     raster("mdt", "Modelo Digital do Terreno", "dtm", thematicBounds, 11, 20),
     raster("mds", "Modelo Digital da Superfície", "dsm", thematicBounds, 11, 20),
     raster("decli", "Declividade", "slope", thematicBounds, 11, 20),

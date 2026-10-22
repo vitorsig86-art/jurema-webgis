@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import type { LayerStatus, ProjectConfig, ProjectLayerConfig } from "../projects/types";
+import { TemporalSelector } from "./TemporalSelector";
 import "./LayerPanel.css";
 
 interface Props {
@@ -124,6 +125,7 @@ export function LayerPanel({ project, statuses, visible, rasterOpacities, onOpac
               </button>
             </h3>
             <div className="layer-list" id={`workspace-list-${section.id}`} hidden={!open}>
+              {section.layers.some(layer => layer.temporalCampaign) && <TemporalSelector layers={section.layers} visible={visible} statuses={statuses} onToggle={onToggle} />}
               {layers.length === 0 && <p className="workspace-section-empty">Sem camadas nesta fase.</p>}
               {layers.map((layer, index) => {
                 const enabled = visible.has(layer.id);

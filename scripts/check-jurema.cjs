@@ -10,15 +10,21 @@ const root = path.join(__dirname, "..");
 function load(file) {
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(path.join(root, file), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  vm.runInNewContext(code, { exports, require: name => name.endsWith(".css") ? {} : name.startsWith(".") ? load(path.join(path.dirname(file), name + ".ts")) : require(name) });
+  vm.runInNewContext(code, { exports, require: name => {
+    if (name.endsWith(".css")) return {};
+    if (!name.startsWith(".")) return require(name);
+    const relative = path.join(path.dirname(file), name);
+    return load(relative + (fs.existsSync(path.join(root, relative + ".ts")) ? ".ts" : ".tsx"));
+  } });
   return exports;
 }
 const { juremaProject: project, orthoBounds, thematicBounds } = load("src/projects/jurema.ts");
 assert.deepEqual(Array.from(project.bounds), Array.from(orthoBounds));
 assert.notDeepEqual(Array.from(orthoBounds), Array.from(thematicBounds));
-assert.equal(project.layers.length, 14);
+assert.equal(project.layers.length, 31);
 assert.equal(project.layers.filter(x => x.defaultVisible).map(x => x.id).join(","), "basemap,orto,peri");
-const rasters = project.layers.filter(x => x.source.format === "tms");
+// Keep the original raster-source checks; temporal campaigns are checked below.
+const rasters = project.layers.filter(x => ["orto", "mdt", "mds", "decli", "aspect", "ndvi"].includes(x.id));
 assert.equal(rasters.length, 6);
 for (const layer of rasters) {
   assert.equal(layer.source.minimumLevel, layer.id === "orto" ? 12 : 11);
@@ -45,7 +51,7 @@ for (const angle of ["heading", "pitch", "roll"]) {
 const { LayerPanel } = load("src/components/LayerPanel.tsx");
 const markup = renderToStaticMarkup(React.createElement(LayerPanel, { project, statuses: {}, visible: new Set(["basemap", "orto"]), rasterOpacities: {}, onOpacityChange() {}, onToggle() {}, onClose() {} }));
 for (const id of ["basemap","model","raster","vector","macro"]) assert.ok(markup.includes("workspace-" + id));
-assert.ok(markup.includes("Buscar camada")); assert.ok(markup.includes("Sem camadas nesta fase."));
+assert.ok(markup.includes("Buscar camada")); assert.ok(markup.includes("Evolução Temporal"));
 const utils = load("src/cesium/measurementUtils.ts");
 const point = cesium.Cartesian3.fromDegrees(0, 0, 500);
 const excluded = new cesium.EntityCollection();
@@ -60,3 +66,4 @@ scene.drillPick = () => []; scene.globe.pick = () => point;
 const fallback = utils.pickHeightPosition(sampleViewer, new cesium.Cartesian2(1,1), excluded);
 assert.ok(fallback); assert.match(utils.measurementText("height", [fallback]), /Globo elipsoidal/);
 console.log("Jurema: fontes, cobertura, câmera/Home, painel e proveniência das cotas OK.");
+require("./check-temporal.cjs");

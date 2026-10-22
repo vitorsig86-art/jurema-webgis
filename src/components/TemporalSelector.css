@@ -1,0 +1,9 @@
+.temporal-selector { min-width: 0; padding: 12px; border: 1px solid #c9ddd6; border-radius: 8px; background: #f1f7f4; }
+.temporal-selector h4 { margin: 0 0 9px; color: #245c53; font-size: 12px; line-height: 1.4; font-weight: 650; }
+.temporal-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.temporal-options button { min-width: 0; min-height: 44px; padding: 5px 4px; border: 1px solid #c8d9d3; border-radius: 5px; background: #fff; color: #315e55; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; touch-action: manipulation; }
+.temporal-options button:hover { background: #e2eee8; }
+.temporal-options button[aria-pressed="true"] { border-color: #245c53; background: #245c53; color: #fff; font-weight: 650; }
+.temporal-options button:focus-visible { outline: 2px solid #245c53; outline-offset: 2px; }
+.temporal-active { margin: 9px 0 0; color: #49685e; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.temporal-active span { display: block; margin-top: 3px; }

@@ -72,6 +72,7 @@ export interface ProjectLayerConfig {
   defaultVisible: boolean;
   opacityControl?: boolean;
   exclusiveGroup?: string;
+  temporalCampaign?: { label: string; description: string };
   group?: "basemap" | "model" | "raster" | "vector" | "macro";
   subsection?: string;
   optional?: boolean;
