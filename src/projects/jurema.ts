@@ -18,15 +18,15 @@ function raster(id: string, name: string, kind: ProjectLayerConfig["kind"], boun
 
 const orthomosaicCampaigns: ProjectLayerConfig[] = [
   { id: "ortho2022", directory: "2022", label: "2022", description: "Levantamento histórico", comparisonLabel: "2022 — Histórico" },
-  { id: "ortho2024", directory: "2024", label: "2024", description: "Antes do incêndio", comparisonLabel: "2024 — Pré-fogo" },
+  { id: "ortho2024", directory: "2024", label: "2024", description: "Antes do incêndio", comparisonLabel: "2024 — Pré-fogo", eventAfter: "Incêndio registrado entre as campanhas de 2024" },
   { id: "ortho2024PostFire", directory: "2024_pos_fogo", label: "2024 pós-fogo", description: "Após o incêndio", comparisonLabel: "2024 — Pós-fogo" },
   { id: "ortho2025", directory: "2025", label: "2025", description: "Registro posterior ao incêndio", comparisonLabel: "2025 — Posterior" },
   { id: "orto", directory: "orto2", label: "2026", description: "Levantamento atual", comparisonLabel: "2026 — Atual" },
-].map(({ id, directory, label, description, comparisonLabel }) => ({
+].map(({ id, directory, label, description, comparisonLabel, eventAfter }: { id: string; directory: string; label: string; description: string; comparisonLabel: string; eventAfter?: string }) => ({
   ...raster(id, "Ortomosaico " + label, "orthomosaic", orthoBounds, 12, 21, directory),
   description: label + " — " + description,
   exclusiveGroup: "temporal-orthomosaics",
-  temporalCampaign: { label, description, comparisonLabel },
+  temporalCampaign: { label, description, comparisonLabel, eventAfter },
 }));
 
 export const juremaProject: ProjectConfig = {
@@ -67,11 +67,14 @@ export const juremaProject: ProjectConfig = {
         },
       } },
     ...orthomosaicCampaigns,
-    raster("mdt", "Modelo Digital do Terreno", "dtm", thematicBounds, 11, 20),
-    raster("mds", "Modelo Digital da Superfície", "dsm", thematicBounds, 11, 20),
-    raster("decli", "Declividade", "slope", thematicBounds, 11, 20),
-    raster("aspect", "Orientação Solar", "solar-orientation", thematicBounds, 11, 20),
-    raster("ndvi", "NDVI", "ndvi", thematicBounds, 11, 20),
+    // The legend of these thematic rasters is drawn into the tiles themselves.
+    ...[
+      raster("mdt", "Modelo Digital do Terreno", "dtm", thematicBounds, 11, 20),
+      raster("mds", "Modelo Digital da Superfície", "dsm", thematicBounds, 11, 20),
+      raster("decli", "Declividade", "slope", thematicBounds, 11, 20),
+      raster("aspect", "Orientação Solar", "solar-orientation", thematicBounds, 11, 20),
+      raster("ndvi", "NDVI", "ndvi", thematicBounds, 11, 20),
+    ].map((layer): ProjectLayerConfig => ({ ...layer, legendMode: "embedded" })),
     ...juremaDroneLayers,
     ...juremaContextLayers,
     ...juremaReliefLayers,

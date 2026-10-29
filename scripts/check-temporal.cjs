@@ -52,11 +52,22 @@ campaigns.forEach((layer, index) => {
 // Cesium is never constructed; any accidental camera call fails the check.
 const states = [];
 let cursor = 0;
-const hookReact = { ...React, useState(initial) {
+function slot(initial) {
   const index = cursor++;
   if (!(index in states)) states[index] = typeof initial === "function" ? initial() : initial;
-  return [states[index], update => { states[index] = typeof update === "function" ? update(states[index]) : update; }];
-} };
+  return index;
+}
+const hookReact = { ...React,
+  useState(initial) {
+    const index = slot(initial);
+    return [states[index], update => { states[index] = typeof update === "function" ? update(states[index]) : update; }];
+  },
+  useRef(initial) { return states[slot(() => ({ current: initial }))]; },
+  useMemo(factory) { cursor++; return factory(); },
+  useId: () => "temporal-test",
+};
+const { TemporalSelector } = load("src/components/TemporalSelector.tsx", { react: hookReact });
+const { PeriodBadge } = load("src/components/PeriodBadge.tsx");
 const Panel = () => null;
 const empty = () => null;
 const opacities = { mdt: 37, ndvi: 62, orto: 80 };
@@ -64,41 +75,57 @@ const viewer = { camera: new Proxy({}, { get() { throw Error("Campaign selection
 const { App } = load("src/App.tsx", {
   react: hookReact, "./projects": { projects: [project] },
   "./components/LayerPanel": { LayerPanel: Panel },
+  "./components/TemporalSelector": { TemporalSelector }, "./components/PeriodBadge": { PeriodBadge },
   ...Object.fromEntries(["Legend", "NavigationControls", "MeasurementToolbar", "VectorPopup"].map(name => ["./components/" + name, { [name]: empty }])),
   "./hooks/useCesiumViewer": { useCesiumViewer: () => ({ containerRef: {}, viewer, error: null }) },
   "./hooks/useProjectLayers": { useProjectLayers: () => ({ statuses: {}, rasterOpacities: opacities, setRasterOpacity() { throw Error("Opacity must be preserved"); } }) },
 });
-function panel() {
+function tree() {
   cursor = 0;
-  return elements(App()).find(element => element.type === Panel).props;
+  return elements(App());
 }
-const { TemporalSelector } = load("src/components/TemporalSelector.tsx", { react: { ...React, useId: () => "temporal-test" } });
-function selector() { return TemporalSelector({ layers: campaigns, ...panel() }); }
+function panel() { return tree().find(element => element.type === Panel).props; }
+// The timeline is rendered by App over the map, with the same visibility state and onToggle.
+function selector() {
+  const props = tree().find(element => element.type === TemporalSelector).props;
+  cursor = 1000;
+  return TemporalSelector(props);
+}
+function markerFor(campaign) {
+  return elements(selector()).find(element => element.type === "button" && element.props.className === "temporal-marker"
+    && element.props["aria-label"].startsWith(campaign.temporalCampaign.comparisonLabel));
+}
+const pressedMarkers = () => elements(selector()).filter(element => element.props?.className === "temporal-marker" && element.props["aria-pressed"]).length;
 panel().onToggle("mdt");
 panel().onToggle("ndvi");
 panel().onToggle("curvas_10m");
 const preserved = [...panel().visible].filter(id => !campaigns.some(layer => layer.id === id)).sort().join(",");
 for (const campaign of [...campaigns, ...campaigns].reverse()) {
-  const button = elements(selector()).find(element => element.type === "button" && element.props.children === campaign.temporalCampaign.label);
-  button.props.onClick();
+  markerFor(campaign).props.onClick();
   const props = panel();
   assert.equal(campaigns.filter(layer => props.visible.has(layer.id)).map(layer => layer.id).join(","), campaign.id);
   assert.equal([...props.visible].filter(id => !campaigns.some(layer => layer.id === id)).sort().join(","), preserved);
   assert.equal(props.rasterOpacities, opacities);
-  assert.equal(elements(selector()).filter(element => element.type === "button" && element.props["aria-pressed"]).length, 1);
+  assert.equal(pressedMarkers(), 1);
   // React supplies the handler from the latest render after visibility changes.
-  elements(selector()).find(element => element.type === "button" && element.props.children === campaign.temporalCampaign.label).props.onClick();
+  markerFor(campaign).props.onClick();
   assert.ok(panel().visible.has(campaign.id));
 }
 panel().onToggle("ortho2024PostFire"); // Manual activation uses the same exclusivity.
 assert.equal(campaigns.filter(layer => panel().visible.has(layer.id)).map(layer => layer.id).join(","), "ortho2024PostFire");
 panel().onToggle("ortho2024PostFire");
 assert.equal(campaigns.filter(layer => panel().visible.has(layer.id)).length, 0);
-assert.match(renderToStaticMarkup(selector()), /Nenhum ortomosaico ativo/);
+assert.equal(pressedMarkers(), 0);
+const badge = () => renderToStaticMarkup(React.createElement(PeriodBadge, tree().find(element => element.type === PeriodBadge).props));
+assert.match(badge(), /Nenhum ortomosaico ativo/);
 panel().onToggle("orto");
+assert.match(badge(), /2026/); assert.match(badge(), /Atual/);
+const timeline = renderToStaticMarkup(selector());
+assert.match(timeline, /Evolução da paisagem/);
+assert.match(timeline, /Pós-fogo/);
+assert.match(timeline, /Incêndio registrado entre as campanhas de 2024/);
 const { LayerPanel } = load("src/components/LayerPanel.tsx");
 const markup = renderToStaticMarkup(React.createElement(LayerPanel, panel()));
-assert.match(markup, /Evolução Temporal/);
-assert.match(markup, /2024 pós-fogo/);
-assert.match(markup, /2026 — Levantamento atual/);
-console.log("Evolução Temporal: fontes, estado inicial, exclusividade, seleção repetida, sincronização manual e preservação de camadas/opacidades OK.");
+assert.match(markup, /Ortomosaico/);
+assert.match(markup, />2026</);
+console.log("Evolução Temporal: fontes, estado inicial, régua sobre o mapa, selo de período, exclusividade, seleção repetida, sincronização manual e preservação de camadas/opacidades OK.");

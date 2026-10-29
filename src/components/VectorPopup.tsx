@@ -2,7 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Cartesian2, Entity, type Viewer } from "cesium";
 import { readVectorPopup, resolveVectorPopupSelection } from "../cesium/vectorPopup";
 import { placePopup, type ScreenPoint } from "./popupPosition";
+import { Icon } from "./icons";
 import "./VectorPopup.css";
+
+// Labels kept as raw source field names (e.g. STREAM_ID) are technical IDs:
+// still shown, but after the readable attributes.
+function isSourceField(label?: string) {
+  return Boolean(label && /^[A-Z0-9_]+$/.test(label) && /[_\d]/.test(label));
+}
 
 export function VectorPopup({ viewer }: { viewer: Viewer | null }) {
   const [popup, setPopup] = useState<ReturnType<typeof readVectorPopup>>(null);
@@ -72,12 +79,19 @@ export function VectorPopup({ viewer }: { viewer: Viewer | null }) {
     return () => { observer.disconnect(); window.removeEventListener("resize", position); };
   }, [popup, anchor, viewer]);
   if (!popup) return null;
+  const readable = popup.fields.filter(field => !isSourceField(field.label));
+  const source = popup.fields.filter(field => isSourceField(field.label));
+  const row = (field: { label?: string; value: string }, index: number) => <p key={index}>{field.label && <span className="vector-popup-label">{field.label}</span>}<span>{field.value}</span></p>;
   return <section ref={popupRef} className="vector-popup" style={placement ?? { visibility: "hidden" }} aria-label="Informações da feição" aria-live="polite">
-    <button type="button" aria-label="Fechar informações" onClick={() => {
+    <button type="button" className="vector-popup-close" aria-label="Fechar informações" onClick={() => {
       if (viewer && !viewer.isDestroyed()) viewer.selectedEntity = undefined;
       setPopup(null);
-    }}>×</button>
-    <strong>{popup.title}</strong>
-    {popup.fields.map((field, index) => <p key={index}>{field.label && `${field.label}: `}{field.value}</p>)}
+    }}><Icon name="close" /></button>
+    <strong className="vector-popup-title">{popup.title}</strong>
+    {readable.map(row)}
+    {source.length > 0 && <details className="vector-popup-source">
+      <summary>Atributos da fonte</summary>
+      {source.map(row)}
+    </details>}
   </section>;
 }

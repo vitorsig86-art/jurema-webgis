@@ -72,7 +72,8 @@ export interface ProjectLayerConfig {
   defaultVisible: boolean;
   opacityControl?: boolean;
   exclusiveGroup?: string;
-  temporalCampaign?: { label: string; description: string; comparisonLabel?: string };
+  // eventAfter marks an event recorded between this campaign and the next one on the timeline.
+  temporalCampaign?: { label: string; description: string; comparisonLabel?: string; eventAfter?: string };
   group?: "basemap" | "model" | "raster" | "vector" | "macro";
   subsection?: string;
   optional?: boolean;

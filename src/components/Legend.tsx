@@ -62,6 +62,16 @@ function LegendFrame({ title, image = false, children }: { title: string; image?
   );
 }
 
+// A visible thematic raster without a supplied scale says so instead of showing nothing.
+export function MissingLegend({ title, message }: { title: string; message: string }) {
+  return (
+    <section className="raster-legend raster-legend-missing" aria-label={`Legenda: ${title}`}>
+      <h2 className="raster-legend-title">{title}</h2>
+      <p>{message}</p>
+    </section>
+  );
+}
+
 export function Legend(props: LegendProps) {
   if (!props.visibility) return null;
   if (props.type === "image") {

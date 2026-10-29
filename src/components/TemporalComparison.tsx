@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import type { Viewer } from "cesium";
 import type { LayerStatus, ProjectLayerConfig, TemporalComparisonSelection } from "../projects/types";
+import { Icon } from "./icons";
+import { campaignEntries } from "./temporal";
 import "./TemporalComparison.css";
 
 interface Props {
@@ -11,21 +13,19 @@ interface Props {
   statuses: Record<string, LayerStatus>;
   rasterOpacities: Record<string, number>;
   drawerOpen: boolean;
-  onChange: (selection: TemporalComparisonSelection) => void;
-  onExit: () => void;
+  // Only imagery is split; a visible 3D model covers both halves.
+  modelVisible?: boolean;
 }
 
-function campaignLabel(layer: ProjectLayerConfig): string {
-  const campaign = layer.temporalCampaign;
-  return campaign ? campaign.comparisonLabel ?? `${campaign.label} — ${campaign.description}` : layer.name;
-}
-
-export function TemporalComparison({ viewer, layers, selection, visible, statuses, rasterOpacities, drawerOpen, onChange, onExit }: Props) {
+// Periods are chosen on the timeline. This layer draws the divider, the
+// "Antes | Depois" labels and the comparison notices over the map.
+export function TemporalComparison({ viewer, layers, selection, visible, statuses, rasterOpacities, drawerOpen, modelVisible = false }: Props) {
   const [position, setPosition] = useState(0.5);
   const drag = useRef<{ pointerId: number; enableInputs: boolean } | null>(null);
   const campaigns = layers.filter(layer => layer.temporalCampaign);
-  const leftCampaign = campaigns.find(layer => layer.id === selection.left);
-  const rightCampaign = campaigns.find(layer => layer.id === selection.right);
+  const entries = campaignEntries(layers);
+  const leftCampaign = entries.find(entry => entry.id === selection.left);
+  const rightCampaign = entries.find(entry => entry.id === selection.right);
   const selected = [selection.left, selection.right];
   const lastCampaignIndex = Math.max(...campaigns.map(layer => layers.indexOf(layer)));
   const coveringRasters = layers.filter((layer, index) => index > lastCampaignIndex
@@ -97,30 +97,26 @@ export function TemporalComparison({ viewer, layers, selection, visible, statuse
           event.stopPropagation();
           moveTo(value);
         }}>
-        <span className="temporal-divider-grip" aria-hidden="true">‹ ›</span>
+        <span className="temporal-divider-grip" aria-hidden="true"><Icon name="grip" size={22} /></span>
       </div>
       <div className="temporal-side-labels" aria-hidden="true">
-        <span style={{ maxWidth: `max(0px, calc(${position * 100}% - 24px))` }}>Esquerda: {leftCampaign && campaignLabel(leftCampaign)}</span>
-        <span style={{ maxWidth: `max(0px, calc(${(1 - position) * 100}% - 24px))` }}>Direita: {rightCampaign && campaignLabel(rightCampaign)}</span>
+        <span className="temporal-side-label" style={{ maxWidth: `max(0px, calc(${position * 100}% - 32px))` }}>
+          <small>Antes</small>
+          <span><strong>{leftCampaign?.year}</strong> {leftCampaign?.period}</span>
+        </span>
+        <span className="temporal-side-label temporal-side-label-right" style={{ maxWidth: `max(0px, calc(${(1 - position) * 100}% - var(--tools-clearance)))` }}>
+          <small>Depois</small>
+          <span className="temporal-side-value"><span>{rightCampaign?.period}</span> <strong>{rightCampaign?.year}</strong></span>
+        </span>
       </div>
-      <section className="temporal-comparison-controls" aria-label="Comparação Temporal">
-        <h3>Comparação Temporal</h3>
-        <div className="temporal-comparison-selects">
-          {(["left", "right"] as const).map(side => <label key={side}>
-            {side === "left" ? "Esquerda" : "Direita"}
-            <select value={selection[side]} onChange={event => onChange({ ...selection, [side]: event.currentTarget.value })}>
-              {campaigns.map(layer => <option key={layer.id} value={layer.id}>{campaignLabel(layer)}</option>)}
-            </select>
-          </label>)}
-        </div>
-        <div className="temporal-comparison-status" role="status" aria-live="polite">
-          {selected.some(id => statuses[id] === "loading" || !statuses[id]) && <p>Carregando campanha…</p>}
-          {selected.some(id => statuses[id] === "error") && <p>Campanha indisponível. Selecione outro período ou verifique a conexão.</p>}
-          {selection.left === selection.right && <p>Mesmo período nos dois lados.</p>}
-          {coveringRasters.length > 0 && <p>Rasters sobre a comparação: {coveringRasters.map(layer => layer.name).join(", ")}. Ajuste a visibilidade ou opacidade em Camadas.</p>}
-        </div>
-        <button type="button" className="temporal-compare-button" onClick={onExit}>Sair da comparação</button>
-      </section>
+      <p className="visually-hidden">Comparação: antes, {leftCampaign?.year} {leftCampaign?.period}; depois, {rightCampaign?.year} {rightCampaign?.period}.</p>
+      <div className="temporal-comparison-status" role="status" aria-live="polite">
+        {selected.some(id => statuses[id] === "loading" || !statuses[id]) && <p data-tone="loading">Carregando campanha…</p>}
+        {selected.some(id => statuses[id] === "error") && <p data-tone="error">Campanha indisponível. Selecione outro período ou verifique a conexão.</p>}
+        {selection.left === selection.right && <p>Mesmo período nos dois lados. Escolha outro na régua.</p>}
+        {modelVisible && <p data-tone="warning">O modelo 3D cobre as duas metades e não entra na comparação.</p>}
+        {coveringRasters.length > 0 && <p data-tone="warning">Rasters sobre a comparação: {coveringRasters.map(layer => layer.name).join(", ")}. Ajuste a visibilidade ou opacidade em Camadas.</p>}
+      </div>
     </div>
   );
 }

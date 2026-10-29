@@ -29,10 +29,16 @@ assert.equal(rasters.length, 6);
 for (const layer of rasters) {
   assert.equal(layer.source.minimumLevel, layer.id === "orto" ? 12 : 11);
   assert.equal(layer.source.maximumLevel, layer.id === "orto" ? 21 : 20);
-  assert.equal(layer.source.url, "https://pub-17e2ce7d5c144788a0b734186a1a0360.r2.dev/" + layer.id + "/{z}/{x}/{reverseY}.png");
+  // The current campaign ("orto", 2026) is published under the orto2 directory.
+  assert.equal(layer.source.url, "https://pub-17e2ce7d5c144788a0b734186a1a0360.r2.dev/" + (layer.id === "orto" ? "orto2" : layer.id) + "/{z}/{x}/{reverseY}.png");
   assert.equal(layer.source.tileWidth, 256); assert.equal(layer.source.tileHeight, 256);
   assert.equal(layer.legend, undefined);
+  // Thematic legends are drawn into the raster tiles; the interface adds none.
+  if (layer.id !== "orto") assert.equal(layer.legendMode, "embedded");
 }
+const { legendMissing } = load("src/components/legendStatus.ts");
+assert.equal(project.layers.filter(legendMissing).map(x => x.id).join(","), "");
+assert.equal(legendMissing({ kind: "slope" }), true, "Thematic raster without legend or legendMode is flagged");
 const model = project.layers.find(x => x.source.format === "3d-tiles");
 assert.equal(model.source.assetId, 5184061); assert.equal(model.source.tokenEnv, "VITE_CESIUM_3D_TOKEN");
 assert.equal(model.source.clipping.enabled, true); assert.equal(model.source.clipping.inverse, true);
@@ -51,7 +57,9 @@ for (const angle of ["heading", "pitch", "roll"]) {
 const { LayerPanel } = load("src/components/LayerPanel.tsx");
 const markup = renderToStaticMarkup(React.createElement(LayerPanel, { project, statuses: {}, visible: new Set(["basemap", "orto"]), rasterOpacities: {}, onOpacityChange() {}, onToggle() {}, onClose() {} }));
 for (const id of ["basemap","model","raster","vector","macro"]) assert.ok(markup.includes("workspace-" + id));
-assert.ok(markup.includes("Buscar camada")); assert.ok(markup.includes("Evolução Temporal"));
+// The timeline lives over the map; the panel keeps one orthomosaic card that points to it.
+assert.ok(markup.includes("Buscar camada")); assert.ok(markup.includes("Período definido na régua do tempo"));
+assert.ok(!markup.includes("Ortomosaico 2022"), "Campaigns are not duplicated as panel checkboxes");
 const utils = load("src/cesium/measurementUtils.ts");
 const point = cesium.Cartesian3.fromDegrees(0, 0, 500);
 const excluded = new cesium.EntityCollection();

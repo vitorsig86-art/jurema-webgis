@@ -1,36 +1,27 @@
-.measurement-controls {
-  position: absolute;
-  top: calc(var(--header-height) + 24px);
-  right: max(84px, calc(env(safe-area-inset-right) + 84px));
-  width: 220px;
-  color: #fff;
-  font-size: 12px;
-}
-.app-shell:has(.raster-legend-stack) .measurement-controls { right: max(188px, calc(env(safe-area-inset-right) + 188px)); }
-.measurement-toolbar { display: flex; border: 1px solid #8fa2b54d; border-radius: 8px; overflow: hidden; background: #26323de8; box-shadow: 0 2px 10px #0003; }
-.measurement-toolbar button { display: grid; place-items: center; flex: 1; min-width: 0; height: 44px; padding: 0; color: inherit; background: transparent; border: 0; touch-action: manipulation; }
-.measurement-toolbar button + button { border-left: 1px solid #8fa2b52e; }
-.measurement-toolbar svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.measurement-toolbar button:hover:not(:disabled), .measurement-actions button:hover:not(:disabled) { background: #46596beb; }
-.measurement-toolbar button[aria-pressed="true"] { color: #9af2ff; background: #326075; box-shadow: inset 0 -3px #66e4f2; }
-.measurement-controls button:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
-.measurement-readout { margin-top: 8px; padding: 12px; border: 1px solid #8fa2b54d; border-radius: 8px; background: #26323df2; box-shadow: 0 2px 10px #0003; line-height: 1.5; max-height: max(80px, calc(100dvh - var(--header-height) - 140px)); overflow-y: auto; overflow-wrap: anywhere; }
-.measurement-readout p { margin: 6px 0; }
-.measurement-readout output { display: block; white-space: pre-line; color: #9af2ff; font-variant-numeric: tabular-nums; }
-.measurement-readout small { display: block; margin-top: 8px; color: #c2cdd7; font-size: 10px; }
+/* Measurement group in the tools column; the readout opens anchored to the left of the column. */
+.measurement-controls { position: relative; width: 44px; font-size: 13px; }
+.measurement-toolbar { display: flex; flex-direction: column; width: 44px; padding: 4px 0; border-radius: 999px; background: var(--color-neutral-100); box-shadow: var(--shadow-md); }
+.measurement-toolbar button { position: relative; display: grid; place-items: center; width: 44px; height: 40px; padding: 0; border: 0; background: transparent; color: var(--color-text); touch-action: manipulation; }
+.measurement-toolbar button:hover:not(:disabled), .measurement-actions button:hover:not(:disabled) { background: var(--color-neutral-200); }
+.measurement-toolbar button[aria-pressed="true"] { background: var(--color-accent-100); color: var(--color-accent-700); }
+.measurement-controls button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+
+.measurement-readout { position: absolute; top: 0; right: calc(100% + 8px); width: 260px; max-height: max(80px, calc(100dvh - var(--header-height) - var(--bar-height) - 260px)); overflow-y: auto; padding: 14px 16px; border-radius: var(--radius-md); background: var(--color-neutral-100); box-shadow: var(--shadow-md); line-height: 1.5; overflow-wrap: anywhere; }
+.measurement-readout > strong { display: block; font-size: 14px; }
+.measurement-readout p { margin: 4px 0; }
+.measurement-help { color: var(--color-neutral-700); font-size: 12px; }
+.measurement-readout output { display: block; margin: 6px 0; white-space: pre-line; color: var(--color-accent-800); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .measurement-message:empty { display: none; }
+.measurement-count { color: var(--color-neutral-700); font-size: 12px; font-variant-numeric: tabular-nums; }
+.measurement-notes { margin-top: 6px; }
+.measurement-notes summary { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; color: var(--color-accent-700); font-size: 12px; font-weight: 600; cursor: pointer; list-style: none; }
+.measurement-notes summary::-webkit-details-marker { display: none; }
+.measurement-notes small { display: block; color: var(--color-neutral-700); font-size: 12px; line-height: 1.45; }
 .measurement-actions { display: flex; gap: 8px; margin-top: 10px; }
-.measurement-actions button { flex: 1; padding: 7px; border: 1px solid #8fa2b54d; border-radius: 4px; background: #354756; color: #fff; font-size: 11px; }
-/* On smaller viewports use the left map edge, keeping navigation and the
-   existing right legend column clear. */
-@media (max-width: 1100px) {
-  .measurement-controls, .app-shell:has(.raster-legend-stack) .measurement-controls { top: calc(var(--header-height) + 114px); right: auto; left: calc(var(--panel-width) + 14px); width: min(220px, calc(100vw - var(--panel-width) - 180px)); }
-}
+.measurement-actions button { flex: 1; min-height: 36px; padding: 0 12px; border: 1px solid var(--color-divider); border-radius: 999px; background: transparent; font-size: 13px; font-weight: 600; }
+
+/* Mobile: the group appears only in "Medir"; the readout becomes a pill under the header. */
 @media (max-width: 760px) {
-  .measurement-controls, .app-shell:has(.raster-legend-stack) .measurement-controls { top: calc(var(--header-height) + 8px); left: max(8px, env(safe-area-inset-left)); right: auto; width: 202px; }
-  .measurement-toolbar button { height: 44px; min-height: 44px; }
-  .measurement-toolbar svg { width: 18px; height: 18px; }
-  .measurement-readout { margin-top: 6px; padding: 10px; font-size: 11px; max-height: max(44px, calc(100dvh - var(--header-height) - 160px - env(safe-area-inset-bottom))); }
-  .measurement-actions { gap: 6px; }
-  .measurement-actions button { min-height: 44px; padding: 6px; }
+  .measurement-readout { position: fixed; top: calc(var(--header-height) + var(--map-gap)); left: var(--map-gap); right: calc(var(--map-gap) + 52px); width: auto; max-height: calc(100dvh - var(--header-height) - var(--bar-height) - 40px); padding: 10px 14px; border-radius: 22px; z-index: 2; }
+  .measurement-actions button { min-height: 44px; }
 }
