@@ -107,6 +107,13 @@ button:disabled { cursor: default; opacity: 0.45; }
 .about-dialog ul { margin: 0; padding-left: 18px; }
 .about-dialog .about-close { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; padding: 0; border: 0; border-radius: 50%; background: var(--color-neutral-200); }
 
+/* Cesium credits: native content and dialog kept (Cesium ion terms), styled to stay discreet. */
+.map-container .cesium-widget-credits { font-family: var(--font-body); font-size: 10px; color: color-mix(in srgb, #fff 88%, transparent); text-shadow: 0 1px 2px color-mix(in srgb, #000 70%, transparent); }
+.map-container .cesium-credit-logoContainer img { max-height: 17px; width: auto; opacity: 0.6; }
+.map-container .cesium-credit-textContainer, .map-container .cesium-credit-textContainer a { color: inherit; }
+.map-container .cesium-credit-expand-link { font-size: 10px; font-weight: 600; color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.map-container .cesium-credit-expand-link:hover { color: #fff; }
+
 /* Mobile bottom bar (hidden on desktop). */
 .mobile-bar { display: none; }
 .sheet-backdrop { display: none; }
@@ -144,17 +151,22 @@ button:disabled { cursor: default; opacity: 0.45; }
   .map-alert { left: var(--map-gap); right: var(--map-gap); top: calc(var(--header-height) + 64px); max-width: none; }
   .map-hint { left: 50%; top: auto; bottom: calc(var(--bar-height) + 150px); max-width: calc(100% - 20px); border-radius: var(--radius-md); }
 
-  /* Keep Cesium's native credit content and dialog; compact only its layout. */
-  .map-container .cesium-viewer-bottom { left: max(4px, env(safe-area-inset-left)); bottom: 2px; width: max-content; max-width: calc(100% - 8px); padding: 0; }
-  .map-container .cesium-widget-credits { display: flex; flex-wrap: wrap; align-items: center; column-gap: 3px; row-gap: 0; font-size: 10px; line-height: 12px; padding: 0; }
+  /* Keep Cesium's native credit content and dialog; compact only its layout.
+     Cesium's Viewer.resize() writes inline left/bottom on .cesium-viewer-bottom (5px/3px),
+     so the row is shifted with transform: aligned with the timeline card and, on the
+     time tab, lifted above it while the timeline drops onto the bar. */
+  :root { --timeline-mobile-gap: 8px; --timeline-mobile-height: 114px; }
+  .map-container .cesium-viewer-bottom { width: max-content; max-width: calc(100% - 16px); padding: 0; transform: translateX(3px); }
+  .app-shell[data-mobile-view="time"]:not(:has(.layer-panel.is-open)) .map-container .cesium-viewer-bottom { transform: translate(3px, calc(-1 * (var(--timeline-mobile-gap) + var(--timeline-mobile-height)))); }
+  .map-container .cesium-widget-credits { display: flex; flex-wrap: wrap; align-items: center; column-gap: 4px; row-gap: 0; line-height: 12px; padding: 0; }
   .map-container .cesium-credit-logoContainer { flex-shrink: 0; }
-  .map-container .cesium-credit-logoContainer a { display: inline-flex; align-items: center; min-height: 32px; }
-  .map-container .cesium-credit-logoContainer img { max-height: 20px; width: auto; }
+  .map-container .cesium-credit-logoContainer a { display: inline-flex; align-items: center; min-height: 28px; }
+  .map-container .cesium-credit-logoContainer img { max-height: 12px; }
   .map-container .cesium-credit-textContainer { min-width: 0; overflow-wrap: anywhere; }
   .map-container .cesium-credit-textContainer a { display: inline-block; min-height: 24px; max-width: 100%; line-height: 24px; }
   .map-container .cesium-credit-textContainer .cesium-credit-wrapper:first-of-type { padding-left: 0; }
   .map-container .cesium-credit-delimiter { padding: 0 2px; }
-  .map-container .cesium-credit-expand-link { flex-shrink: 0; min-height: 32px; padding: 0 3px; font-size: 11px; line-height: 32px; white-space: nowrap; touch-action: manipulation; }
+  .map-container .cesium-credit-expand-link { flex-shrink: 0; min-height: 28px; padding: 0 3px; line-height: 28px; white-space: nowrap; touch-action: manipulation; }
   .map-container .cesium-credit-lightbox-overlay { position: fixed; top: var(--header-height); height: calc(100% - var(--header-height)); z-index: 5; }
   .map-container .cesium-credit-lightbox-mobile { overflow-y: auto; overscroll-behavior: contain; }
   .map-container .cesium-credit-lightbox-close { min-width: 44px; min-height: 44px; line-height: 44px; text-align: center; }
