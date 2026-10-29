@@ -21,7 +21,7 @@ const orthomosaicCampaigns: ProjectLayerConfig[] = [
   { id: "ortho2024", directory: "2024", label: "2024", description: "Antes do incêndio", comparisonLabel: "2024 — Pré-fogo" },
   { id: "ortho2024PostFire", directory: "2024_pos_fogo", label: "2024 pós-fogo", description: "Após o incêndio", comparisonLabel: "2024 — Pós-fogo" },
   { id: "ortho2025", directory: "2025", label: "2025", description: "Registro posterior ao incêndio", comparisonLabel: "2025 — Posterior" },
-  { id: "orto", directory: "orto", label: "2026", description: "Levantamento atual", comparisonLabel: "2026 — Atual" },
+  { id: "orto", directory: "orto2", label: "2026", description: "Levantamento atual", comparisonLabel: "2026 — Atual" },
 ].map(({ id, directory, label, description, comparisonLabel }) => ({
   ...raster(id, "Ortomosaico " + label, "orthomosaic", orthoBounds, 12, 21, directory),
   description: label + " — " + description,
