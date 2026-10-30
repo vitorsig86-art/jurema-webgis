@@ -1,6 +1,25 @@
 import { ColorMaterialProperty, JulianDate, type Entity } from "cesium";
 import type { VectorPopupConfig } from "../projects/types";
 
+export interface VectorPopupActionLink {
+  label: string;
+  url: string;
+  target: "overlay" | "tab";
+  flyTo: boolean;
+}
+
+// Returns the normalized URL when it is https and its origin is allowed.
+export function allowedPageUrl(value: unknown, allowedOrigins: readonly string[] = []): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  let url: URL;
+  try { url = new URL(value.trim()); } catch { return null; }
+  if (url.protocol !== "https:" || url.username || url.password) return null;
+  const allowed = allowedOrigins.some(origin => {
+    try { return new URL(origin).origin === url.origin; } catch { return false; }
+  });
+  return allowed ? url.href : null;
+}
+
 const configurations = new WeakMap<Entity, VectorPopupConfig>();
 
 export function registerVectorPopup(entity: Entity, config: VectorPopupConfig): void {
@@ -32,7 +51,7 @@ function present(value: unknown): boolean {
   return value !== null && value !== undefined && !(typeof value === "number" && !Number.isFinite(value));
 }
 
-export function readVectorPopup(entity: Entity | undefined, time = JulianDate.now()) {
+export function readVectorPopup(entity: Entity | undefined, time = JulianDate.now(), allowedOrigins: readonly string[] = []) {
   const config = entity && configurations.get(entity);
   if (!config || !entity || !entity.isShowing) return null;
   const properties = entity.properties?.getValue(time) ?? {};
@@ -48,6 +67,10 @@ export function readVectorPopup(entity: Entity | undefined, time = JulianDate.no
         }).format(value)
         : String(value);
       return { label: field.label, value: `${field.prefix ?? ""}${formatted}${field.suffix ?? ""}` };
+    }),
+    actions: (config.actions ?? []).flatMap((action): VectorPopupActionLink[] => {
+      const url = allowedPageUrl(action.url ?? (action.urlProperty ? properties[action.urlProperty] : undefined), allowedOrigins);
+      return url ? [{ label: action.label, url, target: action.target ?? "overlay", flyTo: action.flyTo ?? true }] : [];
     }),
   };
 }

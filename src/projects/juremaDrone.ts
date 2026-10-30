@@ -32,7 +32,25 @@ const propertyArea = vector("peri", "Área do imóvel", "peri.geojson", {
   field("CARDEAL_CALCULATED_PERIMETER_M", "Perímetro calculado (horizontal)", { decimals: 2, suffix: " m" }),
 ]);
 
+// Área do estudo de café agroflorestal (R2: geojson/area_estudo.geojson, WGS84). O botão do
+// popup abre a simulação 3D do trecho; a origem está liberada em juremaProject.embeddedPages.
+const coffeeStudy: ProjectLayerConfig = {
+  id: "estudo-cafe", name: "Estudo de café agroflorestal", description: "Simulação 3D de café agroflorestal em keyline",
+  kind: "vector", group: "vector", defaultVisible: true, opacityControl: true,
+  source: {
+    format: "geojson", url: baseUrl + "area_estudo.geojson", autoZoom: false,
+    ignoreAltitude: true, uniqueFeatureIds: true, calculateGeometryMetrics: true,
+    style: { stroke: "#E0A526", strokeWidth: 3, fill: "#E0A526", fillOpacity: 0.18, clampToGround: true, zIndex: 25 },
+    popup: {
+      title: "Estudo de café agroflorestal",
+      fields: [field("CARDEAL_CALCULATED_AREA_HA", "Área calculada", { decimals: 2, suffix: " ha" })],
+      actions: [{ label: "Entrar na simulação 3D", url: "https://projetocafejurema.vercel.app/" }],
+    },
+  },
+};
+
 export const juremaDroneLayers: ProjectLayerConfig[] = [
+  coffeeStudy,
   {
     ...propertyArea, kind: "property-boundary", defaultVisible: true,
     source: { ...propertyArea.source as Extract<ProjectLayerConfig["source"], { format: "geojson" }>, calculateGeometryMetrics: true },

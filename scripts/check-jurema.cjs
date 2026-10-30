@@ -21,8 +21,21 @@ function load(file) {
 const { juremaProject: project, orthoBounds, thematicBounds } = load("src/projects/jurema.ts");
 assert.deepEqual(Array.from(project.bounds), Array.from(orthoBounds));
 assert.notDeepEqual(Array.from(orthoBounds), Array.from(thematicBounds));
-assert.equal(project.layers.length, 31);
-assert.equal(project.layers.filter(x => x.defaultVisible).map(x => x.id).join(","), "basemap,orto,peri");
+assert.equal(project.layers.length, 32);
+assert.equal(project.layers.filter(x => x.defaultVisible).map(x => x.id).join(","), "basemap,orto,estudo-cafe,peri");
+// Estudo de café agroflorestal: o popup abre a simulação 3D, só de origem liberada.
+const study = project.layers.find(x => x.id === "estudo-cafe");
+assert.equal(study.source.url, "https://pub-17e2ce7d5c144788a0b734186a1a0360.r2.dev/geojson/area_estudo.geojson");
+assert.equal(study.source.popup.actions[0].url, "https://projetocafejurema.vercel.app/");
+assert.deepEqual(Array.from(project.embeddedPages.allowedOrigins), ["https://projetocafejurema.vercel.app"]);
+const studyUrl = study.source.popup.actions[0].url;
+const popupExports = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, "src/cesium/vectorPopup.ts"), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
+  { exports: popupExports, require, URL });
+const { allowedPageUrl } = popupExports;
+assert.equal(allowedPageUrl(studyUrl, project.embeddedPages.allowedOrigins), "https://projetocafejurema.vercel.app/");
+assert.equal(allowedPageUrl("https://projetocafejurema.vercel.app.evil.invalid/", project.embeddedPages.allowedOrigins), null);
+assert.equal(allowedPageUrl("http://projetocafejurema.vercel.app/", project.embeddedPages.allowedOrigins), null);
 // Keep the original raster-source checks; temporal campaigns are checked below.
 const rasters = project.layers.filter(x => ["orto", "mdt", "mds", "decli", "aspect", "ndvi"].includes(x.id));
 assert.equal(rasters.length, 6);
@@ -73,5 +86,5 @@ assert.equal(utils.pickHeightPosition(sampleViewer, new cesium.Cartesian2(1,1), 
 scene.drillPick = () => []; scene.globe.pick = () => point;
 const fallback = utils.pickHeightPosition(sampleViewer, new cesium.Cartesian2(1,1), excluded);
 assert.ok(fallback); assert.match(utils.measurementText("height", [fallback]), /Globo elipsoidal/);
-console.log("Jurema: fontes, cobertura, câmera/Home, painel e proveniência das cotas OK.");
+console.log("Jurema: fontes, cobertura, câmera/Home, painel, proveniência das cotas e estudo de café (simulação 3D) OK.");
 require("./check-temporal.cjs");

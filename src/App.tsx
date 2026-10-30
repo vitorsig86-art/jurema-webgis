@@ -12,11 +12,14 @@ import { AboutDialog } from "./components/AboutDialog";
 import { Icon, type IconName } from "./components/icons";
 import { legendMissing, legendMissingText } from "./components/legendStatus";
 
+import { HeadingPitchRange, Math as CesiumMath, type Entity } from "cesium";
+import type { VectorPopupActionLink } from "./cesium/vectorPopup";
 import { useCesiumViewer } from "./hooks/useCesiumViewer";
 import { useProjectLayers } from "./hooks/useProjectLayers";
 import type { ProjectConfig, TemporalComparisonSelection } from "./projects/types";
 
 const ModelDevelopmentTools = import.meta.env.DEV ? lazy(() => import("./components/ModelDevelopmentTools")) : null;
+const EmbeddedPageOverlay = lazy(() => import("./components/EmbeddedPageOverlay"));
 
 // Mobile bottom bar: "Camadas" opens the sheet; the other three choose what sits over the map.
 type MobileView = "time" | "measure" | "legend";
@@ -43,6 +46,7 @@ export function App() {
   const [modelHint, setModelHint] = useState(false);
   const modelHintShown = useRef(false);
   const [comparison, setComparison] = useState<TemporalComparisonSelection | null>(null);
+  const [page, setPage] = useState<{ url: string; title: string } | null>(null);
   // Keep simple-mode visibility untouched for the entire comparison session.
   const displayVisible = useMemo(() => {
     if (!comparison) return visible;
@@ -89,6 +93,19 @@ export function App() {
     setMobileView(view);
   }
 
+  // Popup action: fly to the feature (its polygon when the click hit an outline helper), then open the page.
+  async function openPage({ action, title, entity }: { action: VectorPopupActionLink; title: string; entity: Entity }) {
+    if (action.target === "tab") { window.open(action.url, "_blank", "noopener"); return; }
+    if (viewer && !viewer.isDestroyed()) {
+      viewer.selectedEntity = undefined;
+      if (action.flyTo) {
+        const target = entity.parent?.polygon ? entity.parent : entity;
+        await viewer.flyTo(target, { duration: 1.6, offset: new HeadingPitchRange(viewer.camera.heading, CesiumMath.toRadians(-45), 0) });
+      }
+    }
+    setPage({ url: action.url, title });
+  }
+
   return (
     <main className="app-shell" data-panel={panelCollapsed ? "collapsed" : undefined} data-mobile-view={activeMobileView}>
       <div ref={containerRef} className="map-container" aria-label="Mapa 3D interativo do projeto" />
@@ -128,7 +145,8 @@ export function App() {
         <NavigationControls viewer={viewer} project={project} disabled={Boolean(error)} />
         <MeasurementToolbar viewer={viewer} disabled={Boolean(error)} />
       </div>
-      <VectorPopup viewer={viewer} />
+      <VectorPopup viewer={viewer} allowedOrigins={project.embeddedPages?.allowedOrigins} onOpenPage={openPage} />
+      {page && <Suspense fallback={null}><EmbeddedPageOverlay url={page.url} title={page.title} onClose={() => setPage(null)} /></Suspense>}
       {ModelDevelopmentTools && (project.developmentTools?.modelAlignment || project.developmentTools?.cropAuthoring) &&
         <Suspense fallback={null}>
           {project.layers.filter(layer => layer.source.format === "3d-tiles" && visible.has(layer.id)).map(layer =>

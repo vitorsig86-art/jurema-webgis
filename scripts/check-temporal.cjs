@@ -34,7 +34,7 @@ const { juremaProject: project, orthoBounds } = load("src/projects/jurema.ts");
 const campaigns = project.layers.filter(layer => layer.temporalCampaign);
 assert.equal(campaigns.map(layer => layer.id).join(","), "ortho2022,ortho2024,ortho2024PostFire,ortho2025,orto");
 assert.equal(campaigns.filter(layer => layer.defaultVisible).map(layer => layer.id).join(","), "orto");
-assert.equal(project.layers.filter(layer => layer.defaultVisible).map(layer => layer.id).join(","), "basemap,orto,peri");
+assert.equal(project.layers.filter(layer => layer.defaultVisible).map(layer => layer.id).join(","), "basemap,orto,estudo-cafe,peri");
 const directories = ["2022", "2024", "2024_pos_fogo", "2025", "orto2"];
 campaigns.forEach((layer, index) => {
   assert.equal(layer.source.format, "tms");

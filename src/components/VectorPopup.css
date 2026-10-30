@@ -6,7 +6,12 @@
 .vector-popup-source summary { min-height: 28px; color: var(--color-accent-700); font-size: 12px; font-weight: 600; line-height: 28px; cursor: pointer; }
 .vector-popup-close { position: absolute; right: 6px; top: 6px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
 .vector-popup-close:hover { background: var(--color-neutral-200); }
+.vector-popup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.vector-popup-action { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border: 0; border-radius: var(--radius-sm); background: var(--color-accent-700); color: var(--color-neutral-100); font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; touch-action: manipulation; }
+.vector-popup-action:hover { background: var(--color-accent-800); }
+.vector-popup-action:focus-visible { outline: 2px solid var(--color-accent-300); outline-offset: 2px; }
 @media (max-width: 760px) {
+  .vector-popup-action { min-height: 44px; }
   .vector-popup { padding: 12px 48px 12px 14px; }
   .vector-popup-close { width: 44px; height: 44px; top: 0; right: 0; }
   .app-shell:has(.layer-panel.is-open) .vector-popup { display: none; }

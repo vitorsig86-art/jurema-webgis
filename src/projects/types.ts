@@ -81,7 +81,22 @@ export interface ProjectLayerConfig {
   legend?: LegendConfig;
 }
 
+// Popup button that opens an external page, e.g. a 3D simulation of a plot.
+// The URL is fixed (url) or read from a feature property (urlProperty), so each
+// feature can decide whether the button appears. Only https URLs whose origin is
+// listed in ProjectConfig.embeddedPages.allowedOrigins are offered.
+export interface VectorPopupAction {
+  label: string;
+  url?: string;
+  urlProperty?: string;
+  // "overlay" (default) opens the page over the map; "tab" opens a new tab.
+  target?: "overlay" | "tab";
+  // Overlay only: fly to the feature before opening. Default true.
+  flyTo?: boolean;
+}
+
 export interface VectorPopupConfig {
+  actions?: VectorPopupAction[];
   title?: string;
   titleProperty?: string;
   titlePrefix?: string;
@@ -127,6 +142,9 @@ export interface ProjectConfig {
   initialCamera?: CameraConfig;
   layers: ProjectLayerConfig[];
   temporalComparison?: TemporalComparisonSelection;
+  // Origins allowed for popup actions (exact scheme + host + port, https only).
+  // Without it no action button is shown.
+  embeddedPages?: { allowedOrigins: string[] };
   developmentTools?: { modelAlignment?: boolean; cropAuthoring?: boolean; cameraCapture?: boolean };
 }
 
