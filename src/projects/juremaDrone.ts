@@ -44,7 +44,7 @@ const coffeeStudy: ProjectLayerConfig = {
     popup: {
       title: "Estudo de café agroflorestal",
       fields: [field("CARDEAL_CALCULATED_AREA_HA", "Área calculada", { decimals: 2, suffix: " ha" })],
-      actions: [{ label: "Entrar na simulação 3D", url: "https://projetocafejurema.vercel.app/" }],
+      actions: [{ label: "Entrar na simulação 3D", url: "https://projetocafejurema.vercel.app/", flyTo: "home" }],
     },
   },
 };

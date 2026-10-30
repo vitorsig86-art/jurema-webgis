@@ -14,6 +14,7 @@ import { legendMissing, legendMissingText } from "./components/legendStatus";
 
 import { HeadingPitchRange, Math as CesiumMath, type Entity } from "cesium";
 import type { VectorPopupActionLink } from "./cesium/vectorPopup";
+import { flyToProjectHome } from "./cesium/projectCamera";
 import { useCesiumViewer } from "./hooks/useCesiumViewer";
 import { useProjectLayers } from "./hooks/useProjectLayers";
 import type { ProjectConfig, TemporalComparisonSelection } from "./projects/types";
@@ -98,7 +99,9 @@ export function App() {
     if (action.target === "tab") { window.open(action.url, "_blank", "noopener"); return; }
     if (viewer && !viewer.isDestroyed()) {
       viewer.selectedEntity = undefined;
-      if (action.flyTo) {
+      if (action.flyTo === "home") {
+        await flyToProjectHome(viewer, project, 1.6);
+      } else if (action.flyTo) {
         const target = entity.parent?.polygon ? entity.parent : entity;
         await viewer.flyTo(target, { duration: 1.6, offset: new HeadingPitchRange(viewer.camera.heading, CesiumMath.toRadians(-45), 0) });
       }

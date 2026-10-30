@@ -5,7 +5,7 @@ export interface VectorPopupActionLink {
   label: string;
   url: string;
   target: "overlay" | "tab";
-  flyTo: boolean;
+  flyTo: boolean | "home";
 }
 
 // Returns the normalized URL when it is https and its origin is allowed.

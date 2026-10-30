@@ -27,6 +27,7 @@ assert.equal(project.layers.filter(x => x.defaultVisible).map(x => x.id).join(",
 const study = project.layers.find(x => x.id === "estudo-cafe");
 assert.equal(study.source.url, "https://pub-17e2ce7d5c144788a0b734186a1a0360.r2.dev/geojson/area_estudo.geojson");
 assert.equal(study.source.popup.actions[0].url, "https://projetocafejurema.vercel.app/");
+assert.equal(study.source.popup.actions[0].flyTo, "home");
 assert.deepEqual(Array.from(project.embeddedPages.allowedOrigins), ["https://projetocafejurema.vercel.app"]);
 const studyUrl = study.source.popup.actions[0].url;
 const popupExports = {};

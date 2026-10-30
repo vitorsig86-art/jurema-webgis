@@ -12,6 +12,17 @@ export function createCameraView(camera: CameraConfig) {
   };
 }
 
+// Animated flight to the project initial view; resolves when it ends or is cancelled.
+export function flyToProjectHome(viewer: Viewer, project: ProjectConfig, duration = 1.2): Promise<void> {
+  if (viewer.isDestroyed()) return Promise.resolve();
+  const camera = project.initialCamera;
+  const view = camera ? createCameraView(camera) : { destination: Rectangle.fromDegrees(...project.bounds) };
+  return new Promise(resolve => {
+    viewer.camera.flyTo({ ...view, duration, complete: () => resolve(), cancel: () => resolve() });
+    viewer.scene.requestRender();
+  });
+}
+
 // Omit duration for immediate opening; supply it for an animated Home action.
 export function applyProjectCamera(viewer: Viewer, project: ProjectConfig, duration?: number): void {
   if (viewer.isDestroyed()) return;
