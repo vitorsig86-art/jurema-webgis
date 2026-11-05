@@ -80,7 +80,7 @@ export const juremaProject: ProjectConfig = {
     ...juremaReliefLayers,
   ],
   // Páginas que os popups podem abrir sobre o mapa (simulação 3D do estudo de café).
-  embeddedPages: { allowedOrigins: ["https://projetocafejurema.vercel.app"] },
+  embeddedPages: { allowedOrigins: ["https://projetocafejurema.vercel.app", "https://simulacao-oliveiras.vercel.app"] },
   developmentTools: { modelAlignment: false, cropAuthoring: false },
 };
 

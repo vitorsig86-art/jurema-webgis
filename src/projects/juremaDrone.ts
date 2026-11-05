@@ -49,8 +49,26 @@ const coffeeStudy: ProjectLayerConfig = {
   },
 };
 
+// Área de estudo 2, olival Arbequina (R2: geojson/area_estudo2.geojson, WGS84). flyTo false é
+// explícito: o padrão é true, e esta simulação abre com a câmera parada.
+const oliveStudy: ProjectLayerConfig = {
+  id: "estudo-oliveiras", name: "Área de estudo 2", description: "Simulação 3D do olival Arbequina",
+  kind: "vector", group: "vector", defaultVisible: true, opacityControl: true,
+  source: {
+    format: "geojson", url: baseUrl + "area_estudo2.geojson", autoZoom: false,
+    ignoreAltitude: true, uniqueFeatureIds: true, calculateGeometryMetrics: true,
+    style: { stroke: "#9AAE3C", strokeWidth: 3, fill: "#9AAE3C", fillOpacity: 0.18, clampToGround: true, zIndex: 25 },
+    popup: {
+      title: "Estudo de olival Arbequina",
+      fields: [field("CARDEAL_CALCULATED_AREA_HA", "Área calculada", { decimals: 2, suffix: " ha" })],
+      actions: [{ label: "Entrar na simulação 3D", url: "https://simulacao-oliveiras.vercel.app/", flyTo: false }],
+    },
+  },
+};
+
 export const juremaDroneLayers: ProjectLayerConfig[] = [
   coffeeStudy,
+  oliveStudy,
   {
     ...propertyArea, kind: "property-boundary", defaultVisible: true,
     source: { ...propertyArea.source as Extract<ProjectLayerConfig["source"], { format: "geojson" }>, calculateGeometryMetrics: true },
