@@ -17,6 +17,7 @@ import type { VectorPopupActionLink } from "./cesium/vectorPopup";
 import { flyToProjectHome } from "./cesium/projectCamera";
 import { useCesiumViewer } from "./hooks/useCesiumViewer";
 import { useProjectLayers } from "./hooks/useProjectLayers";
+import { isMobileClient } from "./mobile";
 import type { ProjectConfig, TemporalComparisonSelection } from "./projects/types";
 
 const ModelDevelopmentTools = import.meta.env.DEV ? lazy(() => import("./components/ModelDevelopmentTools")) : null;
@@ -35,6 +36,7 @@ function defaultVisibility(project: ProjectConfig) {
 }
 
 export function App() {
+  const [mobileMode] = useState(isMobileClient);
   const project = projects[0];
   const [visible, setVisible] = useState(() => defaultVisibility(projects[0]));
   // Mobile sheet (open/high) and desktop panel (collapsed) are UI state only.
@@ -58,7 +60,7 @@ export function App() {
     return next;
   }, [visible, comparison, project]);
   const { containerRef, viewer, error } = useCesiumViewer();
-  const { statuses, mapWarning, rasterOpacities, setRasterOpacity, getModel } = useProjectLayers(viewer, project, displayVisible, comparison);
+  const { statuses, mapWarning, rasterOpacities, setRasterOpacity, getModel } = useProjectLayers(viewer, project, displayVisible, comparison, mobileMode);
   const legendLayers = project.layers.filter((layer) => layer.legend && visible.has(layer.id));
   const missingLegendLayers = project.layers.filter((layer) => visible.has(layer.id) && legendMissing(layer));
   const legendCount = legendLayers.length + missingLegendLayers.length;
@@ -148,7 +150,7 @@ export function App() {
         <NavigationControls viewer={viewer} project={project} disabled={Boolean(error)} />
         <MeasurementToolbar viewer={viewer} disabled={Boolean(error)} />
       </div>
-      <VectorPopup viewer={viewer} allowedOrigins={project.embeddedPages?.allowedOrigins} onOpenPage={openPage} />
+      <VectorPopup viewer={viewer} allowedOrigins={project.embeddedPages?.allowedOrigins} onOpenPage={openPage} mobileMode={mobileMode} />
       {page && <Suspense fallback={null}><EmbeddedPageOverlay url={page.url} title={page.title} onClose={() => setPage(null)} /></Suspense>}
       {ModelDevelopmentTools && (project.developmentTools?.modelAlignment || project.developmentTools?.cropAuthoring) &&
         <Suspense fallback={null}>

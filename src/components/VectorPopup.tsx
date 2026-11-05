@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Cartesian2, Entity, type Viewer } from "cesium";
 import { readVectorPopup, resolveVectorPopupSelection, type VectorPopupActionLink } from "../cesium/vectorPopup";
+import { subscribeVectorPopupUpdates } from "../cesium/vectorPopupUpdates";
 import { placePopup, type ScreenPoint } from "./popupPosition";
 import { Icon } from "./icons";
 import "./VectorPopup.css";
@@ -15,11 +16,12 @@ const NO_ORIGINS: readonly string[] = [];
 
 interface Props {
   viewer: Viewer | null;
+  mobileMode?: boolean;
   allowedOrigins?: readonly string[];
   onOpenPage?: (page: { action: VectorPopupActionLink; title: string; entity: Entity }) => void;
 }
 
-export function VectorPopup({ viewer, allowedOrigins = NO_ORIGINS, onOpenPage }: Props) {
+export function VectorPopup({ viewer, allowedOrigins = NO_ORIGINS, onOpenPage, mobileMode = false }: Props) {
   const [popup, setPopup] = useState<ReturnType<typeof readVectorPopup>>(null);
   const popupRef = useRef<HTMLElement>(null);
   const clickRef = useRef<ScreenPoint | null>(null);
@@ -32,6 +34,7 @@ export function VectorPopup({ viewer, allowedOrigins = NO_ORIGINS, onOpenPage }:
       const next = readVectorPopup(viewer.selectedEntity, viewer.clock.currentTime, allowedOrigins);
       setPopup(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
       setAnchor(clickRef.current);
+      return Boolean(next);
     };
     // Observe clicks without replacing Cesium's picking or input actions.
     const rememberPoint = (event: PointerEvent) => { clickRef.current = { x: event.clientX, y: event.clientY }; };
@@ -48,16 +51,13 @@ export function VectorPopup({ viewer, allowedOrigins = NO_ORIGINS, onOpenPage }:
     };
     canvas.addEventListener("pointerdown", rememberPoint);
     canvas.addEventListener("click", clicked);
-    update();
-    const remove = viewer.selectedEntityChanged.addEventListener(update);
-    const removeTick = viewer.clock.onTick.addEventListener(update);
+    const removeUpdates = subscribeVectorPopupUpdates(viewer, update, mobileMode);
     return () => {
-      removeTick();
-      remove();
+      removeUpdates();
       canvas.removeEventListener("pointerdown", rememberPoint);
       canvas.removeEventListener("click", clicked);
     };
-  }, [viewer, allowedOrigins]);
+  }, [viewer, allowedOrigins, mobileMode]);
 
   useLayoutEffect(() => {
     if (!popup || !viewer || viewer.isDestroyed() || !popupRef.current) return;

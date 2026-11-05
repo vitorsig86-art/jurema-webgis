@@ -4,14 +4,15 @@ import { applyProjectCamera } from "../cesium/projectCamera";
 import { assertImageryLayerReady, attachLayer, createBasemapFallback, isBasemapFallback, loadLayer, removeLayer, setVectorOpacity, setVectorVisibility, type LoadedLayer } from "../cesium/loadLayer";
 import { createImageryTileErrorHandler } from "../cesium/imageryTileErrors";
 import { createModelTerrainCutout } from "../cesium/modelTerrainCutout";
-import type { LayerStatus, ProjectConfig, TemporalComparisonSelection } from "../projects/types";
+import type { LayerStatus, ProjectConfig, ProjectLayerConfig, TemporalComparisonSelection } from "../projects/types";
 
-export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, visible: Set<string>, comparison: TemporalComparisonSelection | null = null) {
+export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, visible: Set<string>, comparison: TemporalComparisonSelection | null = null, mobileMode = false) {
   const loaded = useRef(new Map<string, LoadedLayer>());
   const opacityRef = useRef(new Map<string, number>());
   const [rasterOpacities, setRasterOpacities] = useState<Record<string, number>>({});
   const visibleRef = useRef(visible);
   const loadVisibleTilesRef = useRef<(() => void) | null>(null);
+  const loadVisibleVectorsRef = useRef<(() => void) | null>(null);
   const terrainCutouts = useRef(new Map<string, ReturnType<typeof createModelTerrainCutout>>());
   visibleRef.current = visible;
   const comparisonRef = useRef(comparison);
@@ -35,7 +36,8 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
     loaded.current = resources;
     const unsubscribe: (() => void)[] = [];
     setMapWarning(null);
-    setStatuses(Object.fromEntries(project.layers.map((layer) => [layer.id, layer.source.format === "3d-tiles" ? "idle" : "loading"])));
+    setStatuses(Object.fromEntries(project.layers.map((layer) => [layer.id,
+      layer.source.format === "3d-tiles" || (mobileMode && layer.source.format === "geojson") ? "idle" : "loading"])));
     applyProjectCamera(viewer, project);
 
     const pendingTiles = new Set<string>();
@@ -100,87 +102,125 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
     loadVisibleTilesRef.current = loadVisibleTiles;
     loadVisibleTiles();
 
-    // Sequential attachment preserves imagery stack order. React cleanup guards
-    // late async results when a project changes or StrictMode remounts the app.
+    const loadDefinition = async (definition: ProjectLayerConfig): Promise<boolean> => {
+      let pendingLayer: LoadedLayer | undefined;
+      try {
+        const layer = await loadLayer(definition);
+        pendingLayer = layer;
+        if (cancelled || viewer.isDestroyed()) {
+          if (mobileMode) removeLayer(viewer, layer);
+          else if (layer instanceof ImageryLayer && !layer.isDestroyed()) layer.destroy();
+          return false;
+        }
+        const isRaster = definition.source.format === "tms" || definition.source.format === "xyz";
+        // Keep newly constructed rasters hidden until attachment completes.
+        // Publish only attached layers so the toggle effect cannot expose one
+        // while the attachment promise is pending.
+        layer.show = isRaster ? false : visibleRef.current.has(definition.id);
+        if (layer instanceof GeoJsonDataSource) setVectorVisibility(layer, layer.show);
+        if (definition.kind === "basemap" && layer instanceof ImageryLayer) {
+          viewer.imageryLayers.add(layer, 0);
+        } else {
+          await attachLayer(viewer, layer);
+        }
+        if (cancelled || viewer.isDestroyed()) {
+          removeLayer(viewer, layer);
+          return false;
+        }
+        resources.set(definition.id, layer);
+        if (mobileMode && layer instanceof GeoJsonDataSource) setVectorVisibility(layer, visibleRef.current.has(definition.id));
+        if (layer instanceof ImageryLayer) applyTemporalSplit(definition.id, layer);
+        if (isRaster && layer instanceof ImageryLayer) layer.alpha = opacityRef.current.get(definition.id) ?? 1;
+        if (definition.opacityControl && layer instanceof GeoJsonDataSource) setVectorOpacity(layer, opacityRef.current.get(definition.id) ?? 1);
+        if (layer instanceof ImageryLayer) {
+          const handleTileError = createImageryTileErrorHandler(definition, setMapWarning, import.meta.env.DEV, layer.imageryProvider);
+          unsubscribe.push(handleTileError.dispose);
+          unsubscribe.push(layer.imageryProvider.errorEvent.addEventListener((tileError) => {
+            if (cancelled) return;
+            if (definition.source.format === "ion-world-imagery" && !isBasemapFallback(layer)) {
+              if (viewer.isDestroyed() || resources.get(definition.id) !== layer) return;
+              tileError.retry = false;
+              // Replace only the failed basemap; preserve overlay order and visibility.
+              const fallback = createBasemapFallback(definition);
+              fallback.show = visibleRef.current.has(definition.id);
+              viewer.imageryLayers.remove(layer, true);
+              viewer.imageryLayers.add(fallback, 0);
+              resources.set(definition.id, fallback);
+              unsubscribe.push(fallback.imageryProvider.errorEvent.addEventListener((error) => {
+                if (!cancelled) handleTileError(error);
+              }));
+              console.warn("Bing Aerial unavailable · OpenStreetMap fallback");
+              setStatuses((current) => ({ ...current, [definition.id]: "fallback" }));
+              viewer.scene.requestRender();
+              return;
+            }
+            handleTileError(tileError);
+          }));
+        }
+        setStatuses((current) => ({ ...current, [definition.id]: isBasemapFallback(layer) ? "fallback" : "ready" }));
+        if (isRaster) layer.show = visibleRef.current.has(definition.id);
+        if (layer instanceof GeoJsonDataSource && layer.show
+          && definition.source.format === "geojson" && definition.source.autoZoom !== false) {
+          await viewer.zoomTo(layer);
+        }
+        if (!cancelled && !viewer.isDestroyed()) viewer.scene.requestRender();
+        return true;
+      } catch (cause) {
+        if (cancelled || viewer.isDestroyed()) return false;
+        if (pendingLayer) removeLayer(viewer, pendingLayer);
+        resources.delete(definition.id);
+        console.error(`Unable to load layer ${definition.id}`, cause);
+        setStatuses((current) => ({ ...current, [definition.id]: "error" }));
+        if (definition.source.format === "tms" || definition.source.format === "xyz") {
+          setMapWarning(`Não foi possível inicializar ${definition.name}. Verifique a configuração, a URL e os níveis de zoom da fonte.`);
+        }
+        return false;
+      }
+    };
+
+    const queuedVectors = new Set<string>();
+    const failedVectors = new Set<string>();
+    let vectorQueue = Promise.resolve();
+    const loadVisibleVectors = () => {
+      if (cancelled || viewer.isDestroyed()) return;
+      for (const definition of project.layers) {
+        if (definition.source.format !== "geojson") continue;
+        const id = definition.id;
+        if (!visibleRef.current.has(id)) {
+          failedVectors.delete(id);
+          continue;
+        }
+        if (resources.has(id) || queuedVectors.has(id) || failedVectors.has(id)) continue;
+        queuedVectors.add(id);
+        setStatuses(current => ({ ...current, [id]: "loading" }));
+        vectorQueue = vectorQueue.then(async () => {
+          if (cancelled || viewer.isDestroyed()) return;
+          if (!visibleRef.current.has(id)) {
+            setStatuses(current => ({ ...current, [id]: "idle" }));
+            return;
+          }
+          const succeeded = await loadDefinition(definition);
+          if (!succeeded && !cancelled && visibleRef.current.has(id)) failedVectors.add(id);
+        }).finally(() => { queuedVectors.delete(id); });
+      }
+    };
+    loadVisibleVectorsRef.current = mobileMode ? loadVisibleVectors : null;
+    if (mobileMode) loadVisibleVectors();
+
+    // Preserve desktop loading and imagery stack order. Mobile vectors have
+    // their own serial queue, independent of raster and simulation resources.
     void (async () => {
       for (const definition of project.layers) {
         if (cancelled || viewer.isDestroyed()) return;
-        if (definition.source.format === "3d-tiles") continue;
-        let pendingLayer: LoadedLayer | undefined;
-        try {
-          const layer = await loadLayer(definition);
-          pendingLayer = layer;
-          if (cancelled || viewer.isDestroyed()) {
-            if (layer instanceof ImageryLayer && !layer.isDestroyed()) layer.destroy();
-            return;
-          }
-          const isRaster = definition.source.format === "tms" || definition.source.format === "xyz";
-          // Keep newly constructed rasters hidden until attachment completes.
-          // Publish only attached layers so the toggle effect cannot expose one
-          // while the attachment promise is pending.
-          layer.show = isRaster ? false : visibleRef.current.has(definition.id);
-          if (layer instanceof GeoJsonDataSource) setVectorVisibility(layer, layer.show);
-          if (definition.kind === "basemap" && layer instanceof ImageryLayer) {
-            viewer.imageryLayers.add(layer, 0);
-          } else {
-            await attachLayer(viewer, layer);
-          }
-          if (cancelled || viewer.isDestroyed()) {
-            removeLayer(viewer, layer);
-            return;
-          }
-          resources.set(definition.id, layer);
-          if (layer instanceof ImageryLayer) applyTemporalSplit(definition.id, layer);
-          if (isRaster && layer instanceof ImageryLayer) layer.alpha = opacityRef.current.get(definition.id) ?? 1;
-          if (definition.opacityControl && layer instanceof GeoJsonDataSource) setVectorOpacity(layer, opacityRef.current.get(definition.id) ?? 1);
-          if (layer instanceof ImageryLayer) {
-            const handleTileError = createImageryTileErrorHandler(definition, setMapWarning, import.meta.env.DEV, layer.imageryProvider);
-            unsubscribe.push(handleTileError.dispose);
-            unsubscribe.push(layer.imageryProvider.errorEvent.addEventListener((tileError) => {
-              if (cancelled) return;
-              if (definition.source.format === "ion-world-imagery" && !isBasemapFallback(layer)) {
-                if (viewer.isDestroyed() || resources.get(definition.id) !== layer) return;
-                tileError.retry = false;
-                // Replace only the failed basemap; preserve overlay order and visibility.
-                const fallback = createBasemapFallback(definition);
-                fallback.show = visibleRef.current.has(definition.id);
-                viewer.imageryLayers.remove(layer, true);
-                viewer.imageryLayers.add(fallback, 0);
-                resources.set(definition.id, fallback);
-                unsubscribe.push(fallback.imageryProvider.errorEvent.addEventListener((error) => {
-                  if (!cancelled) handleTileError(error);
-                }));
-                console.warn("Bing Aerial unavailable · OpenStreetMap fallback");
-                setStatuses((current) => ({ ...current, [definition.id]: "fallback" }));
-                viewer.scene.requestRender();
-                return;
-              }
-              handleTileError(tileError);
-            }));
-          }
-          setStatuses((current) => ({ ...current, [definition.id]: isBasemapFallback(layer) ? "fallback" : "ready" }));
-          if (isRaster) layer.show = visibleRef.current.has(definition.id);
-          if (layer instanceof GeoJsonDataSource && layer.show
-            && definition.source.format === "geojson" && definition.source.autoZoom !== false) {
-            await viewer.zoomTo(layer);
-          }
-          if (!cancelled && !viewer.isDestroyed()) viewer.scene.requestRender();
-        } catch (cause) {
-          if (cancelled || viewer.isDestroyed()) return;
-          if (pendingLayer) removeLayer(viewer, pendingLayer);
-          resources.delete(definition.id);
-          console.error(`Unable to load layer ${definition.id}`, cause);
-          setStatuses((current) => ({ ...current, [definition.id]: "error" }));
-          if (definition.source.format === "tms" || definition.source.format === "xyz") {
-            setMapWarning(`Não foi possível inicializar ${definition.name}. Verifique a configuração, a URL e os níveis de zoom da fonte.`);
-          }
-        }
+        if (definition.source.format === "3d-tiles" || (mobileMode && definition.source.format === "geojson")) continue;
+        await loadDefinition(definition);
       }
     })();
 
     return () => {
       cancelled = true;
       if (loadVisibleTilesRef.current === loadVisibleTiles) loadVisibleTilesRef.current = null;
+      if (loadVisibleVectorsRef.current === loadVisibleVectors) loadVisibleVectorsRef.current = null;
       if (!viewer.isDestroyed()) viewer.camera.cancelFlight();
       unsubscribe.forEach((remove) => remove());
       for (const cutout of terrainCutouts.current.values()) cutout.dispose();
@@ -189,7 +229,7 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
       resources.clear();
       if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
-  }, [viewer, project]);
+  }, [viewer, project, mobileMode]);
 
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
@@ -203,6 +243,7 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
       terrainCutouts.current.get(id)?.setVisible(layer.show);
     }
     loadVisibleTilesRef.current?.();
+    loadVisibleVectorsRef.current?.();
     viewer.scene.requestRender();
   }, [viewer, visible, comparison]);
 
