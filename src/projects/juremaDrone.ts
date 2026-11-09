@@ -47,7 +47,7 @@ const coffeeStudy: ProjectLayerConfig = {
         field("area_ha", "Área", { decimals: 2, suffix: " ha" }),
         field("perimetro_m", "Perímetro", { format: "integer", suffix: " m" }),
       ],
-      actions: [{ label: "Entrar na simulação 3D", url: "https://simujurema.vercel.app/", flyTo: "home" }],
+      actions: [{ label: "Entrar na simulação 3D", url: "https://simujurema.vercel.app/", flyTo: false }],
     },
   },
 };
