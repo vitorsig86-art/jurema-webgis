@@ -42,9 +42,12 @@ const coffeeStudy: ProjectLayerConfig = {
     ignoreAltitude: true, uniqueFeatureIds: true, calculateGeometryMetrics: true,
     style: { stroke: "#E0A526", strokeWidth: 3, fill: "#E0A526", fillOpacity: 0.18, clampToGround: true, zIndex: 25 },
     popup: {
-      title: "Estudo de café agroflorestal",
-      fields: [field("CARDEAL_CALCULATED_AREA_HA", "Área calculada", { decimals: 2, suffix: " ha" })],
-      actions: [{ label: "Entrar na simulação 3D", url: "https://projetocafejurema.vercel.app/", flyTo: "home" }],
+      title: "Estudo de café agroflorestal", titleProperty: "nome",
+      fields: [
+        field("area_ha", "Área", { decimals: 2, suffix: " ha" }),
+        field("perimetro_m", "Perímetro", { format: "integer", suffix: " m" }),
+      ],
+      actions: [{ label: "Entrar na simulação 3D", url: "https://simujurema.vercel.app/", flyTo: "home" }],
     },
   },
 };
