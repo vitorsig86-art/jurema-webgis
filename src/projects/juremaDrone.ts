@@ -36,7 +36,7 @@ const propertyArea = vector("peri", "Área do imóvel", "peri.geojson", {
 // popup abre a simulação 3D do trecho; a origem está liberada em juremaProject.embeddedPages.
 const coffeeStudy: ProjectLayerConfig = {
   id: "estudo-cafe", name: "Estudo de café agroflorestal", description: "Simulação 3D de café agroflorestal em keyline",
-  kind: "vector", group: "vector", defaultVisible: true, opacityControl: true,
+  kind: "vector", group: "vector", defaultVisible: false, opacityControl: true,
   source: {
     format: "geojson", url: baseUrl + "area_estudo.geojson", autoZoom: false,
     ignoreAltitude: true, uniqueFeatureIds: true, calculateGeometryMetrics: true,
@@ -56,7 +56,7 @@ const coffeeStudy: ProjectLayerConfig = {
 // explícito: o padrão é true, e esta simulação abre com a câmera parada.
 const oliveStudy: ProjectLayerConfig = {
   id: "estudo-oliveiras", name: "Área de estudo 2", description: "Simulação 3D do olival Arbequina",
-  kind: "vector", group: "vector", defaultVisible: true, opacityControl: true,
+  kind: "vector", group: "vector", defaultVisible: false, opacityControl: true,
   source: {
     format: "geojson", url: baseUrl + "area_estudo2.geojson", autoZoom: false,
     ignoreAltitude: true, uniqueFeatureIds: true, calculateGeometryMetrics: true,
@@ -73,7 +73,7 @@ export const juremaDroneLayers: ProjectLayerConfig[] = [
   coffeeStudy,
   oliveStudy,
   {
-    ...propertyArea, kind: "property-boundary", defaultVisible: true,
+    ...propertyArea, kind: "property-boundary", defaultVisible: false,
     source: { ...propertyArea.source as Extract<ProjectLayerConfig["source"], { format: "geojson" }>, calculateGeometryMetrics: true },
   },
   contours(1, 0.5),

@@ -6,7 +6,7 @@ import { createImageryTileErrorHandler } from "../cesium/imageryTileErrors";
 import { createModelTerrainCutout } from "../cesium/modelTerrainCutout";
 import type { LayerStatus, ProjectConfig, ProjectLayerConfig, TemporalComparisonSelection } from "../projects/types";
 
-export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, visible: Set<string>, comparison: TemporalComparisonSelection | null = null, mobileMode = false) {
+export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, visible: Set<string>, comparison: TemporalComparisonSelection | null = null) {
   const loaded = useRef(new Map<string, LoadedLayer>());
   const opacityRef = useRef(new Map<string, number>());
   const [rasterOpacities, setRasterOpacities] = useState<Record<string, number>>({});
@@ -37,7 +37,7 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
     const unsubscribe: (() => void)[] = [];
     setMapWarning(null);
     setStatuses(Object.fromEntries(project.layers.map((layer) => [layer.id,
-      layer.source.format === "3d-tiles" || (mobileMode && layer.source.format === "geojson") ? "idle" : "loading"])));
+      layer.source.format === "3d-tiles" || layer.source.format === "geojson" ? "idle" : "loading"])));
     applyProjectCamera(viewer, project);
 
     const pendingTiles = new Set<string>();
@@ -108,8 +108,7 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
         const layer = await loadLayer(definition);
         pendingLayer = layer;
         if (cancelled || viewer.isDestroyed()) {
-          if (mobileMode) removeLayer(viewer, layer);
-          else if (layer instanceof ImageryLayer && !layer.isDestroyed()) layer.destroy();
+          removeLayer(viewer, layer);
           return false;
         }
         const isRaster = definition.source.format === "tms" || definition.source.format === "xyz";
@@ -128,7 +127,16 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
           return false;
         }
         resources.set(definition.id, layer);
-        if (mobileMode && layer instanceof GeoJsonDataSource) setVectorVisibility(layer, visibleRef.current.has(definition.id));
+        if (layer instanceof GeoJsonDataSource) {
+          // Visibility may change while DataSourceCollection.add is pending.
+          setVectorVisibility(layer, visibleRef.current.has(definition.id));
+          // Preserve project stacking even when users activate vectors out of order.
+          // The original zIndex styling remains owned by the layer loader.
+          for (const entry of project.layers) {
+            const source = resources.get(entry.id);
+            if (source instanceof GeoJsonDataSource) viewer.dataSources.raiseToTop(source);
+          }
+        }
         if (layer instanceof ImageryLayer) applyTemporalSplit(definition.id, layer);
         if (isRaster && layer instanceof ImageryLayer) layer.alpha = opacityRef.current.get(definition.id) ?? 1;
         if (definition.opacityControl && layer instanceof GeoJsonDataSource) setVectorOpacity(layer, opacityRef.current.get(definition.id) ?? 1);
@@ -204,15 +212,15 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
         }).finally(() => { queuedVectors.delete(id); });
       }
     };
-    loadVisibleVectorsRef.current = mobileMode ? loadVisibleVectors : null;
-    if (mobileMode) loadVisibleVectors();
+    loadVisibleVectorsRef.current = loadVisibleVectors;
+    loadVisibleVectors();
 
-    // Preserve desktop loading and imagery stack order. Mobile vectors have
-    // their own serial queue, independent of raster and simulation resources.
+    // Imagery keeps its configured stack and startup behavior. All vectors use
+    // the same on-demand serial queue, independent of imagery and 3D Tiles.
     void (async () => {
       for (const definition of project.layers) {
         if (cancelled || viewer.isDestroyed()) return;
-        if (definition.source.format === "3d-tiles" || (mobileMode && definition.source.format === "geojson")) continue;
+        if (definition.source.format === "3d-tiles" || definition.source.format === "geojson") continue;
         await loadDefinition(definition);
       }
     })();
@@ -229,7 +237,7 @@ export function useProjectLayers(viewer: Viewer | null, project: ProjectConfig, 
       resources.clear();
       if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
-  }, [viewer, project, mobileMode]);
+  }, [viewer, project]);
 
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;

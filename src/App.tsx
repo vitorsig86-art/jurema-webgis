@@ -60,7 +60,7 @@ export function App() {
     return next;
   }, [visible, comparison, project]);
   const { containerRef, viewer, error } = useCesiumViewer();
-  const { statuses, mapWarning, rasterOpacities, setRasterOpacity, getModel } = useProjectLayers(viewer, project, displayVisible, comparison, mobileMode);
+  const { statuses, mapWarning, rasterOpacities, setRasterOpacity, getModel } = useProjectLayers(viewer, project, displayVisible, comparison);
   const legendLayers = project.layers.filter((layer) => layer.legend && visible.has(layer.id));
   const missingLegendLayers = project.layers.filter((layer) => visible.has(layer.id) && legendMissing(layer));
   const legendCount = legendLayers.length + missingLegendLayers.length;

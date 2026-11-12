@@ -22,12 +22,15 @@ const { juremaProject: project, orthoBounds, thematicBounds } = load("src/projec
 assert.deepEqual(Array.from(project.bounds), Array.from(orthoBounds));
 assert.notDeepEqual(Array.from(orthoBounds), Array.from(thematicBounds));
 assert.equal(project.layers.length, 33);
-assert.equal(project.layers.filter(x => x.defaultVisible).map(x => x.id).join(","), "basemap,orto,estudo-cafe,estudo-oliveiras,peri");
+assert.equal(project.layers.filter(x => x.defaultVisible).map(x => x.id).join(","), "basemap,orto");
+const vectors = project.layers.filter(x => x.source.format === "geojson");
+assert.equal(vectors.length, 20);
+assert.ok(vectors.every(x => x.defaultVisible === false), "Every GeoJSON starts disabled");
 // Estudo de café agroflorestal: o popup abre a simulação 3D, só de origem liberada.
 const study = project.layers.find(x => x.id === "estudo-cafe");
 assert.equal(study.source.url, "https://pub-17e2ce7d5c144788a0b734186a1a0360.r2.dev/geojson/area_estudo.geojson");
 assert.equal(study.source.popup.actions[0].url, "https://simujurema.vercel.app/");
-assert.equal(study.source.popup.actions[0].flyTo, "home");
+assert.equal(study.source.popup.actions[0].flyTo, false);
 assert.deepEqual(Array.from(project.embeddedPages.allowedOrigins), ["https://simujurema.vercel.app", "https://simulacao-oliveiras.vercel.app"]);
 const studyUrl = study.source.popup.actions[0].url;
 const popupExports = {};

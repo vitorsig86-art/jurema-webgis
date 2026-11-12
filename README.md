@@ -17,3 +17,7 @@ Abertura e Home compartilham initialCamera em src/projects/jurema.ts, com os val
 Núcleo do template preservado, inclusive guards de compatibilidade de rasters/clipping que usam internals do Cesium 1.146; revisar antes de upgrades. Painel e GPS adaptados seletivamente de Andrelândia sem configurações territoriais. Identificação da superfície da medição de cota reaproveitada via APIs públicas, preservando o cálculo do template.
 
 Validação: npm run typecheck. Scripts herdados exclusivos do template não comprovam a configuração de Jurema. Nenhum production build nesta fase.
+
+## GeoJSON sob demanda
+
+Os 20 GeoJSON começam desligados em desktop e mobile. Ativar uma camada a coloca na fila serial compartilhada; desativá-la durante o carregamento preserva a última intenção, e reativá-la após sucesso reutiliza os recursos em memória. Falhas permitem nova tentativa ao desligar e ligar. Basemap, rasters, câmera e modelo mantêm o estado inicial anterior. Detalhes, medições e validação da intervenção: [relatório](docs/PERFORMANCE_GEOJSON_SOB_DEMANDA.md).
